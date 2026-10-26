@@ -3,857 +3,1107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>D&D 5e Helper & Dice Roller</title>
-    <!-- Tailwind CSS for utility classes -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>D&D Helper</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-
-        /* CSS Variables for Theming */
         :root {
-            --bg-body: #0f172a; /* slate-900 */
-            --bg-surface: #1e293b; /* slate-800 */
-            --bg-surface-hover: #334155; /* slate-700 */
-            --text-main: #f8fafc; /* slate-50 */
-            --text-muted: #94a3b8; /* slate-400 */
-            --border-color: #334155; /* slate-700 */
+            /* Базовые переменные (темная тема по умолчанию) */
+            --bg-main: #121820;
+            --bg-panel: #1a222d;
+            --bg-panel-light: #242f3d;
             
-            --accent: #3b82f6; /* blue-500 */
-            --accent-glow: rgba(59, 130, 246, 0.4);
+            --accent: #00d2ff;
+            --accent-rgb: 0, 210, 255;
+            --glow-mult: 1; /* Множитель интенсивности свечения */
             
-            --dice-bg: linear-gradient(135deg, #3b82f6, #1d4ed8);
-            --dice-shadow: 0 4px 15px rgba(0,0,0,0.4), inset 0 -3px 8px rgba(0,0,0,0.3), inset 0 3px 8px rgba(255,255,255,0.2);
-            --dice-text: #ffffff;
+            --text-main: #e0e0e0;
+            --text-muted: #8892b0;
+            --text-bright: #ffffff;
+            --border: #2e3c4f;
+            --crit-success: #4ade80;
+            --crit-fail: #f87171;
             
-            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+            /* Динамическое свечение */
+            --glow-strong: 0 0 calc(var(--glow-mult) * 25px) rgba(var(--accent-rgb), 0.35), inset 0 0 calc(var(--glow-mult) * 15px) rgba(var(--accent-rgb), 0.15);
+            --glow-medium: 0 0 calc(var(--glow-mult) * 12px) rgba(var(--accent-rgb), 0.25);
+            --glow-text: 0 0 calc(var(--glow-mult) * 8px) rgba(var(--accent-rgb), 0.7);
         }
 
-        .theme-light {
-            --bg-body: #f8fafc; /* slate-50 */
-            --bg-surface: #ffffff; 
-            --bg-surface-hover: #f1f5f9; /* slate-100 */
-            --text-main: #0f172a; /* slate-900 */
-            --text-muted: #64748b; /* slate-500 */
-            --border-color: #e2e8f0; /* slate-200 */
+        .light-theme {
+            --bg-main: #f0f2f5;
+            --bg-panel: #ffffff;
+            --bg-panel-light: #e4e6eb;
+            --text-main: #1a1a1a;
+            --text-muted: #666666;
+            --text-bright: #0066cc; /* Исправлено: сумма яркая, не сливается с фоном */
+            --border: #cccccc;
             
-            --accent: #2563eb; /* blue-600 */
-            --accent-glow: rgba(37, 99, 235, 0.2);
-            
-            --dice-bg: linear-gradient(135deg, #60a5fa, #2563eb);
-            --dice-shadow: 0 4px 10px rgba(37,99,235,0.3), inset 0 -3px 5px rgba(0,0,0,0.1), inset 0 3px 5px rgba(255,255,255,0.5);
-            --dice-text: #ffffff;
-            
-            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    }
+            /* Свечение для светлой темы (более мягкое) */
+            --glow-strong: 0 0 calc(var(--glow-mult) * 15px) rgba(var(--accent-rgb), 0.25), inset 0 0 calc(var(--glow-mult) * 10px) rgba(var(--accent-rgb), 0.15);
+            --glow-medium: 0 0 calc(var(--glow-mult) * 8px) rgba(var(--accent-rgb), 0.2);
+            --glow-text: 0 0 calc(var(--glow-mult) * 4px) rgba(var(--accent-rgb), 0.4);
+        }
 
-    /* Core Structure */
-    body {
-        font-family: 'Inter', sans-serif;
-        background-color: var(--bg-body);
-        color: var(--text-main);
-        margin: 0;
-        padding: 0;
-        height: 100vh;
-        height: 100dvh;
-        overflow: hidden; /* Prevent body scroll */
-        display: flex;
-        flex-direction: column;
-        touch-action: auto; /* ИСПРАВЛЕНО: Возвращаем стандартную обработку касаний */
-        -webkit-tap-highlight-color: transparent;
-        transition: background-color 0.3s ease, color 0.3s ease;
-    }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
 
-    /* Header */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            overflow: hidden;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Верхняя навигация */
         header {
-            flex-shrink: 0;
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
-            padding: 1rem;
-            background-color: var(--bg-surface);
-            border-bottom: 1px solid var(--border-color);
-            z-index: 20;
-            transition: background-color 0.3s ease, border-color 0.3s ease;
+            padding: 15px 20px;
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
 
-        /* Navigation */
-        .nav-tabs {
-            display: flex;
-            background-color: var(--bg-surface);
-            border-bottom: 1px solid var(--border-color);
-            flex-shrink: 0;
-        }
-        .nav-btn {
-            flex: 1;
-            text-align: center;
-            padding: 0.75rem 0;
-            font-weight: 700;
-            font-size: 0.875rem;
-            color: var(--text-muted);
+        h1 {
+            font-size: 1.2rem;
+            color: var(--accent);
+            letter-spacing: 1.5px;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border-bottom: 3px solid transparent;
-            transition: all 0.2s ease;
+            text-shadow: var(--glow-text);
         }
-        .nav-btn.active {
+
+        .tabs-nav {
+            display: flex;
+            background-color: var(--bg-panel);
+            position: relative;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 15px 5px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .tab-btn.active {
             color: var(--accent);
             border-bottom-color: var(--accent);
-            background-color: var(--bg-surface-hover);
+            text-shadow: var(--glow-text);
         }
 
-        /* Tab Contents */
-    .tab-content {
-        flex: 1;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch; /* ДОБАВЛЕНО: Плавный скролл на iOS/WebKit */
-        touch-action: pan-y; /* ДОБАВЛЕНО: Разрешаем только вертикальный скролл */
-        display: none;
-        padding: 1rem;
-        position: relative;
-    }
-    .tab-content.active {
-            display: block;
-            animation: fadeIn 0.2s ease-out;
+        /* Контейнеры контента */
+        .content-area {
+            position: absolute;
+            top: 115px; 
+            bottom: 0;
+            width: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            padding: 20px;
         }
-        
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
 
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(5px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* === DICE UI === */
-        .sum-container {
-            background-color: var(--bg-surface);
-            border: 2px solid var(--border-color);
-            border-radius: 1.5rem;
-            box-shadow: var(--card-shadow);
-            padding: 1.5rem;
-            text-align: center;
-            margin-bottom: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        .tab-content.active {
+            display: block;
+        }
+
+        /* --- КАСТОМНЫЙ ПЕРЕКЛЮЧАТЕЛЬ (TOGGLE) --- */
+        .switch {
             position: relative;
-            transition: border-color 0.3s;
+            display: inline-block;
+            width: 46px;
+            height: 24px;
+            flex-shrink: 0;
         }
-        .sum-container.highlight {
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--bg-panel-light);
+            transition: .3s;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px; width: 16px;
+            left: 3px; bottom: 3px;
+            background-color: var(--text-muted);
+            transition: .3s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: rgba(var(--accent-rgb), 0.15);
             border-color: var(--accent);
-            box-shadow: 0 0 20px var(--accent-glow);
+            box-shadow: var(--glow-medium);
         }
-        
-        .sum-label {
-            font-size: 0.75rem;
-            font-weight: 800;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-bottom: 0.25rem;
-        }
-        
-        .sum-value {
-            font-size: 4rem;
-            font-weight: 900;
-            line-height: 1;
-            margin-bottom: 0.5rem;
-            color: var(--accent);
+        input:checked + .slider:before {
+            transform: translateX(22px);
+            background-color: var(--accent);
+            box-shadow: var(--glow-text);
         }
 
-        .sum-formula {
-            font-size: 0.875rem;
-            color: var(--text-muted);
-            font-family: monospace;
-            min-height: 1.25rem;
-            word-break: break-word;
-        }
-
-        /* Dice Grid */
-        .dice-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .dice-card {
+        /* --- РОЛЛЕР (Dice Circle) --- */
+        .roller-container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 0.5rem;
+            gap: 20px;
+            padding-bottom: 100px;
         }
 
-        .die-btn {
-            width: 60px;
-            height: 60px;
-            border-radius: 16px;
-            background: var(--dice-bg);
-            color: var(--dice-text);
-            font-size: 1.25rem;
-            font-weight: 800;
+        .single-controls {
             display: flex;
             align-items: center;
-            justify-content: center;
-            box-shadow: var(--dice-shadow);
-            border: 1px solid rgba(255,255,255,0.1);
-            cursor: pointer;
-            transition: transform 0.1s ease;
-        }
-        .die-btn:active {
-            transform: scale(0.9) translateY(2px);
+            gap: 10px;
+            background: var(--bg-panel);
+            padding: 12px 15px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            width: 100%;
+            justify-content: space-between;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
 
-        /* Shake animation for instant roll */
-        @keyframes popRoll {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.15) rotate(5deg); }
-            100% { transform: scale(1) rotate(0); }
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-main);
+            cursor: pointer;
         }
-        .animate-roll {
-            animation: popRoll 0.2s ease-out;
+
+        .mod-input-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: bold;
+        }
+
+        .mod-input-wrap input {
+            width: 55px;
+            background: var(--bg-panel-light);
+            color: var(--accent);
+            border: 1px solid var(--border);
+            padding: 6px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: 0.2s;
+            text-shadow: var(--glow-text);
+        }
+        .mod-input-wrap input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: var(--glow-medium);
+        }
+
+        .dice-circle-wrapper {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 15px auto;
+        }
+
+        .center-sum {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: var(--bg-panel);
+            border: 2px solid var(--accent);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: var(--glow-strong);
+            transition: 0.2s ease-in-out;
+        }
+
+        .sum-value {
+            font-size: 2.8rem;
+            font-weight: bold;
+            color: var(--text-bright);
+            text-shadow: var(--glow-text);
+            line-height: 1;
+            margin-bottom: 5px;
+        }
+
+        .sum-label {
+            font-size: 0.8rem;
+            color: var(--accent);
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .dice-btn {
+            position: absolute;
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            background: var(--bg-panel-light);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            font-weight: bold;
+            font-size: 1.1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+            box-shadow: var(--glow-medium);
+            text-shadow: var(--glow-text);
+            transition: all 0.15s ease;
+        }
+
+        .dice-btn:active {
+            transform: translate(-50%, -50%) scale(0.9);
+            background: var(--accent);
+            color: var(--text-bright);
+            box-shadow: 0 0 calc(var(--glow-mult) * 25px) var(--accent);
+            text-shadow: none;
+        }
+
+        /* Сборка пула */
+        .pool-builder {
+            width: 100%;
+            background: var(--bg-panel);
+            border-radius: 15px;
+            padding: 20px 15px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 0.95rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.2s;
+        }
+
+        .btn-primary { 
+            background: var(--accent); 
+            color: #121820; 
+            box-shadow: var(--glow-medium);
+        }
+        .btn-primary:active {
+            transform: scale(0.97);
+            box-shadow: 0 0 calc(var(--glow-mult) * 25px) var(--accent);
+        }
+        .btn-secondary { 
+            background: var(--bg-panel-light); 
+            color: var(--text-main); 
+            border: 1px solid var(--border); 
+        }
+        .btn-secondary:active {
+            transform: scale(0.97);
         }
 
         .pool-controls {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            background-color: var(--bg-surface);
-            border: 1px solid var(--border-color);
-            border-radius: 0.5rem;
-            overflow: hidden;
-        }
-        .pool-btn {
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
             justify-content: center;
-            background-color: var(--bg-surface-hover);
-            color: var(--text-main);
-            font-weight: bold;
-            font-size: 1rem;
-            line-height: 1;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .pool-btn:active { background-color: var(--accent); color: white; }
-        .pool-count {
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: var(--text-main);
         }
 
-        /* Pool Action Area */
-        .pool-action-area {
-            background-color: var(--bg-surface);
-            border: 1px solid var(--border-color);
-            border-radius: 1rem;
-            padding: 1rem;
-            box-shadow: var(--card-shadow);
-        }
-
-        .input-mod {
-            background-color: var(--bg-body);
-            color: var(--text-main);
-            border: 1px solid var(--border-color);
-            border-radius: 0.5rem;
-            padding: 0.5rem;
-            text-align: center;
-            font-weight: bold;
-            width: 60px;
-            outline: none;
-        }
-        .input-mod:focus { border-color: var(--accent); }
-
-        .btn-primary {
-            background-color: var(--accent);
-            color: white;
-            font-weight: 700;
-            padding: 0.75rem 1rem;
-            border-radius: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            box-shadow: 0 4px 10px var(--accent-glow);
-            transition: transform 0.1s, box-shadow 0.2s;
-        }
-        .btn-primary:active { transform: scale(0.96); }
-        
-        .btn-secondary {
-            background-color: var(--bg-surface-hover);
-            color: var(--text-main);
-            font-weight: 600;
-            padding: 0.5rem;
-            border-radius: 0.5rem;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            border: 1px solid var(--border-color);
-        }
-        .btn-secondary:active { background-color: var(--border-color); }
-
-        /* === HISTORY DRAWER === */
-        .history-drawer {
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            height: 70vh;
-            background-color: var(--bg-surface);
-            border-top: 1px solid var(--border-color);
-            border-radius: 1.5rem 1.5rem 0 0;
-            box-shadow: 0 -10px 25px rgba(0,0,0,0.3);
-            transform: translateY(100%);
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            z-index: 50;
+        .pool-btn-group {
             display: flex;
-            flex-direction: column;
-        }
-        .history-drawer.open {
-            transform: translateY(0);
-        }
-        .history-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5);
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s;
-            z-index: 40;
-        }
-        .history-overlay.open {
-            opacity: 1;
-            pointer-events: auto;
+            align-items: center;
+            background: var(--bg-main);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border);
         }
 
-        /* === REFERENCE UI (ACCORDIONS) === */
-        details {
-            background-color: var(--bg-surface);
-            border: 1px solid var(--border-color);
-            border-radius: 0.75rem;
-            margin-bottom: 0.75rem;
-            overflow: hidden;
-        }
-        summary {
-            font-weight: 700;
-            padding: 1rem;
+        .pool-btn-group button {
+            background: none;
+            border: none;
+            color: var(--text-main);
+            padding: 10px 15px;
             cursor: pointer;
-            list-style: none;
+            font-size: 1.1rem;
+        }
+        .pool-btn-group button:active { background: var(--bg-panel-light); }
+        .pool-btn-group .dice-label {
+            padding: 0 10px;
+            font-weight: bold;
+            color: var(--accent);
+            text-shadow: var(--glow-text);
+            min-width: 55px;
+            text-align: center;
+        }
+
+        .history-box {
+            width: 100%;
+            background: var(--bg-panel);
+            border-radius: 15px;
+            padding: 15px;
+            border: 1px solid var(--border);
+            max-height: 220px;
+            overflow-y: auto;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .history-item {
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            user-select: none;
         }
-        summary::-webkit-details-marker { display: none; }
-        summary::after {
-            content: '+';
-            font-size: 1.5rem;
-            font-weight: 400;
+        .history-item:last-child { border-bottom: none; }
+        .history-time {
+            font-size: 0.75rem;
             color: var(--text-muted);
-            transition: transform 0.2s;
         }
-        details[open] summary { border-bottom: 1px solid var(--border-color); }
-        details[open] summary::after { transform: rotate(45deg); color: var(--accent); }
-    
-    .details-content {
-        padding: 1rem;
-        font-size: 0.875rem;
-        line-height: 1.6;
-        color: var(--text-muted);
-        -webkit-overflow-scrolling: touch; /* ДОБАВЛЕНО: Плавный скролл внутри аккордеонов */
-        touch-action: auto; 
-    }
-    .details-content b, .details-content strong {
-        color: var(--text-main);
-    }
 
-    /* Tables */
-    .table-wrap {
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch; /* ДОБАВЛЕНО: Плавный горизонтальный скролл */
-        touch-action: pan-x pan-y; /* ДОБАВЛЕНО: Разрешаем свайпать таблицы во все стороны */
-        margin: -1rem; /* Stretch to edges of details-content */
-    }
-    table {
+        /* --- СПРАВОЧНИК --- */
+        .search-bar {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-panel);
+            color: var(--text-main);
+            font-size: 1rem;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+            transition: 0.2s;
+        }
+        .search-bar:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: var(--glow-medium);
+        }
+
+        .accordion {
+            background-color: var(--bg-panel);
+            color: var(--text-main);
+            cursor: pointer;
+            padding: 16px;
+            width: 100%;
+            text-align: left;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            outline: none;
+            font-size: 1.05rem;
+            font-weight: bold;
+            transition: 0.2s;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .accordion:after {
+            content: '\002B';
+            color: var(--accent);
+            font-size: 1.4rem;
+            text-shadow: var(--glow-text);
+        }
+        .accordion.active:after {
+            content: "\2212";
+        }
+        .accordion.active {
+            border-color: var(--accent);
+            box-shadow: var(--glow-medium);
+        }
+
+        .panel {
+            padding: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s cubic-bezier(0, 1, 0.5, 1);
+            margin-bottom: 12px;
+            background-color: transparent;
+        }
+
+        .table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            transform: translateZ(0);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background-color: var(--bg-panel);
+        }
+
+        table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.75rem;
-            min-width: 400px;
+            min-width: 550px;
         }
+
         th, td {
-            padding: 0.75rem 1rem;
+            padding: 14px;
             text-align: left;
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
         }
+
         th {
-            background-color: var(--bg-surface-hover);
-            color: var(--text-main);
-            font-weight: 600;
-            white-space: nowrap;
+            background-color: var(--bg-panel-light);
+            color: var(--accent);
+            position: sticky;
+            top: 0;
+            text-shadow: var(--glow-text);
+            font-weight: bold;
         }
-        tr:last-child td { border-bottom: none; }
+
+        .ref-list {
+            list-style: none;
+            padding: 15px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+
+        .ref-list li {
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .ref-list li:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .ref-list strong {
+            color: var(--accent);
+            text-shadow: var(--glow-text);
+        }
+
+        /* --- НАСТРОЙКИ --- */
+        .settings-block {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            padding: 18px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .settings-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.05rem;
+            font-weight: bold;
+            color: var(--text-main);
+            width: 100%;
+        }
+
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            width: 46px;
+            height: 46px;
+            border-radius: 8px;
+            cursor: pointer;
+            background: none;
+            padding: 0;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { 
+            border: 2px solid var(--border); 
+            border-radius: 8px; 
+            box-shadow: var(--glow-medium);
+        }
+
+        /* Кастомный ползунок */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: var(--bg-panel-light);
+            border-radius: 5px;
+            outline: none;
+            margin-top: 15px;
+            border: 1px solid var(--border);
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: var(--glow-text);
+        }
     </style>
 </head>
 <body>
 
-    <!-- Header -->
     <header>
-        <div class="font-black text-lg tracking-wider text-[var(--accent)]">D&D HELPER</div>
-        <div class="flex gap-2">
-            <button onclick="toggleHistory()" class="btn-secondary flex items-center justify-center p-2 rounded-lg" title="История">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            </button>
-            <button onclick="toggleTheme()" class="btn-secondary flex items-center justify-center p-2 rounded-lg" title="Тема">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-            </button>
-        </div>
+        <h1>D&D Helper</h1>
     </header>
 
-    <!-- Tabs Navigation -->
-    <div class="nav-tabs">
-        <button class="nav-btn active" onclick="switchTab('dice')">Дайсы</button>
-        <button class="nav-btn" onclick="switchTab('ref')">Справочник</button>
+    <div class="tabs-nav">
+        <button class="tab-btn active" onclick="switchTab('roller')">РОЛЛЕР</button>
+        <button class="tab-btn" onclick="switchTab('reference')">СПРАВОЧНИК</button>
+        <button class="tab-btn" onclick="switchTab('settings')">НАСТРОЙКИ</button>
     </div>
 
-    <!-- TAB 1: DICE POOL -->
-    <main id="tab-dice" class="tab-content active">
-        <div class="max-w-xl mx-auto pb-4">
+    <!-- Вкладка РОЛЛЕР -->
+    <div id="roller" class="content-area tab-content active">
+        <div class="roller-container">
             
-            <!-- Result Display -->
-            <div id="sum-box" class="sum-container">
-                <div class="sum-label">Сумма</div>
-                <div id="display-total" class="sum-value">0</div>
-                <div id="display-formula" class="sum-formula">Киньте дайс или соберите пул</div>
+            <div class="single-controls">
+                <label class="toggle-label">
+                    <div class="switch">
+                        <input type="checkbox" id="sumToggle">
+                        <span class="slider"></span>
+                    </div>
+                    Суммировать броски
+                </label>
+                <div class="mod-input-wrap">
+                    <label>Мод:</label>
+                    <input type="number" id="singleMod" value="0">
+                </div>
             </div>
 
-            <!-- Dice Grid -->
-            <div class="dice-grid">
-                <!-- Generator loop for dice -->
-                <script>
-                    const diceTypes = [4, 6, 8, 10, 12, 20, 100];
-                    diceTypes.forEach(d => {
-                        document.write(`
-                            <div class="dice-card">
-                                <button class="die-btn" id="die-btn-${d}" onclick="instantRoll(${d})">d${d}</button>
-                                <div class="pool-controls">
-                                    <button class="pool-btn" onclick="updatePool(${d}, -1)">-</button>
-                                    <span class="pool-count" id="pool-count-${d}">0</span>
-                                    <button class="pool-btn" onclick="updatePool(${d}, 1)">+</button>
+            <div class="dice-circle-wrapper" id="diceCircle">
+                <div class="center-sum" id="centerSumBlock">
+                    <div class="sum-value" id="centerResult">0</div>
+                    <div class="sum-label" id="centerDetail">-</div>
+                </div>
+                <!-- Кнопки расставляются через JS -->
+            </div>
+
+            <div class="pool-builder">
+                <div class="action-btns">
+                    <button class="btn btn-secondary" onclick="clearPool()">Сброс</button>
+                    <button class="btn btn-primary" onclick="rollPool()">Бросить пул</button>
+                </div>
+                
+                <div class="mod-input-wrap" style="justify-content: center; margin-bottom: 15px;">
+                    <label>Пул Мод:</label>
+                    <input type="number" id="poolMod" value="0">
+                </div>
+
+                <div class="pool-controls">
+                    <script>
+                        const diceTypes = [4, 6, 8, 10, 12, 20, 100];
+                        diceTypes.forEach(d => {
+                            document.write(`
+                                <div class="pool-btn-group">
+                                    <button onclick="updatePool(${d}, -1)">-</button>
+                                    <span class="dice-label" id="pool-d${d}">0d${d}</span>
+                                    <button onclick="updatePool(${d}, 1)">+</button>
                                 </div>
-                            </div>
-                        `);
-                    });
-                </script>
-            </div>
-
-            <!-- Pool Action Area -->
-            <div class="pool-action-area">
-                <div class="flex justify-between items-center mb-3">
-                    <span class="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Текущий пул</span>
-                    <button onclick="clearAll()" class="text-xs font-bold text-red-400 hover:text-red-300 transition-colors uppercase">Очистить</button>
-                </div>
-                
-                <div id="pool-formula-display" class="font-mono text-sm text-[var(--text-main)] mb-4 min-h-[1.25rem] break-words font-semibold">
-                    Пусто
-                </div>
-
-                <div class="flex gap-3 items-center">
-                    <div class="flex flex-col">
-                        <label class="text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Модификатор</label>
-                        <input type="number" id="mod-input" value="0" class="input-mod">
-                    </div>
-                    <button onclick="rollPool()" class="btn-primary flex-1 h-full">Бросить пул</button>
-                </div>
-                
-                <div class="mt-3">
-                    <button onclick="repeatLastRoll()" class="btn-secondary w-full">Повторить прошлый бросок</button>
+                            `);
+                        });
+                    </script>
                 </div>
             </div>
 
-        </div>
-    </main>
-
-    <!-- TAB 2: REFERENCE -->
-    <main id="tab-ref" class="tab-content">
-        <div class="max-w-xl mx-auto pb-4">
-            
-            <!-- Accordion 1: Weapons -->
-            <details>
-                <summary>Оружие (Weapons)</summary>
-                <div class="details-content p-0">
-                    <div class="table-wrap">
-                        <table>
-                            <thead><tr><th>Название</th><th>Eng</th><th>Урон</th><th>Тип</th><th>Свойства</th></tr></thead>
-                            <tbody>
-                                <tr><td colspan="5" style="background: var(--bg-surface); text-align: center; font-weight: bold;">Простое рукопашное</td></tr>
-                                <tr><td>Боевой посох</td><td>Quarterstaff</td><td>1d6</td><td>Дробящий</td><td>Универсальное (1d8)</td></tr>
-                                <tr><td>Булава</td><td>Mace</td><td>1d6</td><td>Дробящий</td><td>Нет</td></tr>
-                                <tr><td>Кинжал</td><td>Dagger</td><td>1d4</td><td>Колющий</td><td>Фехтовальное, Легкое, Метательное (20/60)</td></tr>
-                                <tr><td>Копье</td><td>Spear</td><td>1d6</td><td>Колющий</td><td>Метательное (20/60), Универсальное (1d8)</td></tr>
-                                <tr><td>Легкий молот</td><td>Light Hammer</td><td>1d4</td><td>Дробящий</td><td>Легкое, Метательное (20/60)</td></tr>
-                                <tr><td>Метательное копье</td><td>Javelin</td><td>1d6</td><td>Колющий</td><td>Метательное (30/120)</td></tr>
-                                <tr><td>Палица</td><td>Greatclub</td><td>1d8</td><td>Дробящий</td><td>Двуручное</td></tr>
-                                <tr><td>Ручной топор</td><td>Handaxe</td><td>1d6</td><td>Рубящий</td><td>Легкое, Метательное (20/60)</td></tr>
-                                <tr><td>Серп</td><td>Sickle</td><td>1d4</td><td>Рубящий</td><td>Легкое</td></tr>
-
-                                <tr><td colspan="5" style="background: var(--bg-surface); text-align: center; font-weight: bold;">Простое дальнобойное</td></tr>
-                                <tr><td>Дротик</td><td>Dart</td><td>1d4</td><td>Колющий</td><td>Фехтовальное, Метательное (20/60)</td></tr>
-                                <tr><td>Короткий лук</td><td>Shortbow</td><td>1d6</td><td>Колющий</td><td>Боеприпасы (80/320), Двуручное</td></tr>
-                                <tr><td>Легкий арбалет</td><td>Light Crossbow</td><td>1d8</td><td>Колющий</td><td>Боеприпасы (80/320), Двуручное, Перезарядка</td></tr>
-                                <tr><td>Праща</td><td>Sling</td><td>1d4</td><td>Дробящий</td><td>Боеприпасы (30/120)</td></tr>
-
-                                <tr><td colspan="5" style="background: var(--bg-surface); text-align: center; font-weight: bold;">Воинское рукопашное</td></tr>
-                                <tr><td>Алебарда</td><td>Halberd</td><td>1d10</td><td>Рубящий</td><td>Двуручное, Тяжелое, Досягаемость</td></tr>
-                                <tr><td>Боевой молот</td><td>Warhammer</td><td>1d8</td><td>Дробящий</td><td>Универсальное (1d10)</td></tr>
-                                <tr><td>Глефа</td><td>Glaive</td><td>1d10</td><td>Рубящий</td><td>Двуручное, Тяжелое, Досягаемость</td></tr>
-                                <tr><td>Двуручный меч</td><td>Greatsword</td><td>2d6</td><td>Рубящий</td><td>Двуручное, Тяжелое</td></tr>
-                                <tr><td>Двуручный топор</td><td>Greataxe</td><td>1d12</td><td>Рубящий</td><td>Двуручное, Тяжелое</td></tr>
-                                <tr><td>Длинное копье</td><td>Lance</td><td>1d12</td><td>Колющий</td><td>Досягаемость, Особое</td></tr>
-                                <tr><td>Длинный меч</td><td>Longsword</td><td>1d8</td><td>Рубящий</td><td>Универсальное (1d10)</td></tr>
-                                <tr><td>Кнут</td><td>Whip</td><td>1d4</td><td>Рубящий</td><td>Досягаемость, Фехтовальное</td></tr>
-                                <tr><td>Короткий меч</td><td>Shortsword</td><td>1d6</td><td>Колющий</td><td>Фехтовальное, Легкое</td></tr>
-                                <tr><td>Молот</td><td>Maul</td><td>2d6</td><td>Дробящий</td><td>Двуручное, Тяжелое</td></tr>
-                                <tr><td>Пика</td><td>Pike</td><td>1d10</td><td>Колющий</td><td>Двуручное, Тяжелое, Досягаемость</td></tr>
-                                <tr><td>Рапира</td><td>Rapier</td><td>1d8</td><td>Колющий</td><td>Фехтовальное</td></tr>
-                                <tr><td>Секира</td><td>Battleaxe</td><td>1d8</td><td>Рубящий</td><td>Универсальное (1d10)</td></tr>
-                                <tr><td>Скимитар</td><td>Scimitar</td><td>1d6</td><td>Рубящий</td><td>Фехтовальное, Легкое</td></tr>
-                                <tr><td>Трезубец</td><td>Trident</td><td>1d6</td><td>Колющий</td><td>Метательное (20/60), Универсальное (1d10)</td></tr>
-                                <tr><td>Утренняя звезда</td><td>Morningstar</td><td>1d8</td><td>Колющий</td><td>Нет</td></tr>
-                                <tr><td>Цеп</td><td>Flail</td><td>1d8</td><td>Дробящий</td><td>Нет</td></tr>
-
-                                <tr><td colspan="5" style="background: var(--bg-surface); text-align: center; font-weight: bold;">Воинское дальнобойное</td></tr>
-                                <tr><td>Длинный лук</td><td>Longbow</td><td>1d8</td><td>Колющий</td><td>Боеприпасы (150/600), Двуручное, Тяжелое</td></tr>
-                                <tr><td>Духовая трубка</td><td>Blowgun</td><td>1</td><td>Колющий</td><td>Боеприпасы (25/100), Перезарядка</td></tr>
-                                <tr><td>Ручной арбалет</td><td>Hand Crossbow</td><td>1d6</td><td>Колющий</td><td>Боеприпасы (30/120), Легкое, Перезарядка</td></tr>
-                                <tr><td>Сеть</td><td>Net</td><td>0</td><td>Нет</td><td>Особое, Метательное (5/15)</td></tr>
-                                <tr><td>Тяжелый арбалет</td><td>Heavy Crossbow</td><td>1d10</td><td>Колющий</td><td>Боеприпасы (100/400), Двуручное, Тяжелое, Перезарядка</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </details>
-
-            <!-- Accordion 2: Armor -->
-            <details>
-                <summary>Доспехи и Щиты (Armor)</summary>
-                <div class="details-content p-0">
-                    <div class="table-wrap">
-                        <table>
-                            <thead><tr><th>Категория</th><th>Название</th><th>КД / AC</th><th>Треб. Сила</th><th>Скрытность</th></tr></thead>
-                            <tbody>
-                                <tr><td>Легкие</td><td>Стеганый</td><td>11 + Мод. Ловкости</td><td>Нет</td><td>Помеха</td></tr>
-                                <tr><td>Легкие</td><td>Кожаный</td><td>11 + Мод. Ловкости</td><td>Нет</td><td>Нет</td></tr>
-                                <tr><td>Легкие</td><td>Проклепанный</td><td>12 + Мод. Ловкости</td><td>Нет</td><td>Нет</td></tr>
-                                <tr><td>Средние</td><td>Шкурный</td><td>12 + Ловк. (макс. 2)</td><td>Нет</td><td>Нет</td></tr>
-                                <tr><td>Средние</td><td>Кольчужная рубаха</td><td>13 + Ловк. (макс. 2)</td><td>Нет</td><td>Нет</td></tr>
-                                <tr><td>Средние</td><td>Чешуйчатый</td><td>14 + Ловк. (макс. 2)</td><td>Нет</td><td>Помеха</td></tr>
-                                <tr><td>Средние</td><td>Кираса</td><td>14 + Ловк. (макс. 2)</td><td>Нет</td><td>Нет</td></tr>
-                                <tr><td>Средние</td><td>Полулаты</td><td>15 + Ловк. (макс. 2)</td><td>Нет</td><td>Помеха</td></tr>
-                                <tr><td>Тяжелые</td><td>Колечный</td><td>14</td><td>Нет</td><td>Помеха</td></tr>
-                                <tr><td>Тяжелые</td><td>Кольчужный</td><td>16</td><td>Сила 13</td><td>Помеха</td></tr>
-                                <tr><td>Тяжелые</td><td>Наборный</td><td>17</td><td>Сила 15</td><td>Помеха</td></tr>
-                                <tr><td>Тяжелые</td><td>Латы</td><td>18</td><td>Сила 15</td><td>Помеха</td></tr>
-                                <tr><td>Щит</td><td>Щит</td><td>+2 к КД</td><td>Нет</td><td>Нет</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </details>
-
-            <!-- Accordion 3: Combat Actions -->
-            <details>
-                <summary>Действия в бою (Combat Actions)</summary>
-                <div class="details-content">
-                    <ul class="list-disc pl-4 space-y-3">
-                        <li><strong>Атака (Attack):</strong> Удар оружием ближнего или дальнего боя (1d20 + Модификатор характеристики + Бонус мастерства при владении); попадание происходит при результате &ge; КД цели.</li>
-                        <li><strong>Захват / Толчок (Grapple / Shove):</strong> Заменяет одну атаку в ближнем бою; требует встречный бросок Силы (Атлетика) против Силы (Атлетика) или Ловкости (Акробатика) цели.</li>
-                        <li><strong>Использование заклинания (Cast a Spell):</strong> Применение магии, где время каста определяется самим заклинанием.</li>
-                        <li><strong>Рывок (Dash):</strong> Дает дополнительное перемещение на текущий ход, равное базовой скорости персонажа.</li>
-                        <li><strong>Отход (Disengage):</strong> Перемещение персонажа в этот ход не провоцирует атаки по возможности.</li>
-                        <li><strong>Уклонение (Dodge):</strong> Любые атаки по вам совершаются с Помехой, а спасброски Ловкости — с Преимуществом (действует, если персонаж дееспособен и видит нападающего).</li>
-                        <li><strong>Помощь (Help):</strong> Дает союзнику Преимущество на следующую проверку характеристики или бросок атаки против врага в пределах 5 футов.</li>
-                        <li><strong>Засада / Скрытность (Hide):</strong> Попытка спрятаться броском Ловкости (Скрытность) против пассивной Мудрости (Восприятие) врагов.</li>
-                        <li><strong>Подготовка (Ready):</strong> Откладывание действия до наступления выбранного триггера (использует реакцию); подготовка заклинания расходует ячейку и требует поддержания Концентрации.</li>
-                        <li><strong>Поиск (Search):</strong> Поиск скрытых объектов или существ с помощью броска Мудрости (Восприятие) или Интеллекта (Анализ).</li>
-                        <li><strong>Использование объекта (Use an Object):</strong> Взаимодействие со сложным предметом; достать одно оружие при перемещении можно бесплатно, а второе — требует данного действия.</li>
-                    </ul>
-                </div>
-            </details>
-
-            <!-- Accordion 4: Conditions -->
-            <details>
-                <summary>Состояния (Conditions)</summary>
-                <div class="details-content">
-                    <ul class="list-disc pl-4 space-y-3">
-                        <li><strong>Ослепленный (Blinded):</strong> Не видит, автоматически проваливает проверки на зрение, атакует с помехой, получает атаки по себе с преимуществом.</li>
-                        <li><strong>Очарованный (Charmed):</strong> Не может атаковать очаровавшего, а очаровавший получает преимущество на социальные проверки с ним.</li>
-                        <li><strong>Оглохший (Deafened):</strong> Не слышит и автоматически проваливает все проверки на слух.</li>
-                        <li><strong>Испуганный (Frightened):</strong> Помеха на проверки характеристик и атаки, пока источник страха в зоне видимости; не может приближаться к нему.</li>
-                        <li><strong>Схваченный (Grappled):</strong> Скорость равна 0; оканчивается при недееспособности захватившего или при отбрасывании цели эффектом.</li>
-                        <li><strong>Недееспособный (Incapacitated):</strong> Не может совершать действия и реакции.</li>
-                        <li><strong>Невидимый (Invisible):</strong> Нельзя увидеть без магии; считается сильно заслоненным, атакует с преимуществом, атаки по нему — с помехой.</li>
-                        <li><strong>Парализованный (Paralyzed):</strong> Недееспособен, не двигается и не говорит, автоматически проваливает спасброски Силы и Ловкости; атаки по нему — с преимуществом, а попадания с 5 футов становятся критическими.</li>
-                        <li><strong>Окаменевший (Petrified):</strong> Превращен в камень, недееспособен, имеет сопротивление ко всем видам урона, проваливает спасброски Силы и Ловкости, перестает стареть и получает иммунитет к ядам и болезням.</li>
-                        <li><strong>Отравленный (Poisoned):</strong> Помеха на броски атаки и проверки характеристик.</li>
-                        <li><strong>Сбитый с ног (Prone):</strong> Передвигается только ползком и атакует с помехой; атаки по нему с 5 футов совершаются с преимуществом, а издалека — с помехой.</li>
-                        <li><strong>Опутанный (Restrained):</strong> Скорость равна 0, атакует с помехой, получает атаки по себе с преимуществом, имеет помеху на спасброски Ловкости.</li>
-                        <li><strong>Ошеломленный (Stunned):</strong> Недееспособен, не двигается, говорит запинаясь, автоматически проваливает спасброски Силы и Ловкости, атаки по нему — с преимуществом.</li>
-                        <li><strong>Бессознательный (Unconscious):</strong> Недееспособен, роняет предметы, падает ничком, автоматически проваливает спасброски Силы и Ловкости, получает атаки по себе с преимуществом (с 5 футов — критические); урон дает 1 провал спасброска от смерти (критический урон — 2 провала).</li>
-                    </ul>
-                </div>
-            </details>
-
-            <!-- Accordion 5: Mechanics -->
-            <details>
-                <summary>Базовые механики и Укрытия</summary>
-                <div class="details-content">
-                    <h3 class="font-bold text-[var(--text-main)] mb-2">Базовые механики</h3>
-                    <ul class="list-disc pl-4 space-y-2 mb-4">
-                        <li><strong>Преимущество и Помеха:</strong> При Преимуществе выбирается наибольший результат из 2d20, при Помехе — наименьший; эффекты взаимно отменяют друг друга.</li>
-                        <li><strong>Проверки характеристик:</strong> Бросок 1d20 + Модификатор Характеристики + Бонус Мастерства (при владении навыком) против Сложности (DC).</li>
-                        <li><strong>Спасброски:</strong> Бросок 1d20 + Модификатор Характеристики + Бонус Мастерства (при владении спасброском класса).</li>
-                        <li><strong>Спасброски от смерти:</strong> Бросаются при 0 хитов (1d20): результат &ge; 10 — успех, &lt; 10 — провал; 3 успеха стабилизируют, 3 провала — смерть; «20» восстанавливает 1 хит, «1» дает 2 провала.</li>
-                        <li><strong>Критический удар:</strong> Выпадение натуральной «20» при атаке гарантирует попадание и удваивает все кости урона (не распространяется на проверки характеристик или спасброски).</li>
-                    </ul>
-                    <h3 class="font-bold text-[var(--text-main)] mb-2">Укрытия (Cover)</h3>
-                    <ul class="list-disc pl-4 space-y-2">
-                        <li><strong>Половинное укрытие (1/2):</strong> Дает бонус +2 к КД и спасброскам Ловкости (низкая стена, мебель, другое существо).</li>
-                        <li><strong>Укрытие на 3/4:</strong> Дает бонус +5 к КД и спасброскам Ловкости (бойница, толстое дерево).</li>
-                        <li><strong>Полное укрытие:</strong> Существо полностью скрыто и не может быть выбрано прямой целью для атак или заклинаний.</li>
-                    </ul>
-                </div>
-            </details>
-
-        </div>
-    </main>
-
-    <!-- History Drawer Overlay -->
-    <div id="history-overlay" class="history-overlay" onclick="toggleHistory()"></div>
-    
-    <!-- History Drawer Panel -->
-    <div id="history-drawer" class="history-drawer">
-        <div class="p-4 border-b border-[var(--border-color)] flex justify-between items-center bg-[var(--bg-surface)] rounded-t-3xl">
-            <h2 class="font-bold text-lg">История бросков</h2>
-            <button onclick="toggleHistory()" class="text-[var(--text-muted)] p-1 hover:text-[var(--text-main)]">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-        </div>
-        <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-3" style="-webkit-overflow-scrolling: touch; touch-action: pan-y;">
-            <div class="text-center text-[var(--text-muted)] text-sm italic mt-4">Пока нет бросков</div>
+            <div class="history-box" id="history">
+                <div style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">История:</div>
+            </div>
         </div>
     </div>
 
-    <!-- JavaScript Logic -->
-    <script>
-        // --- 1. THEME & TABS ---
-        function toggleTheme() {
-            document.body.classList.toggle('theme-light');
-        }
+    <!-- Вкладка СПРАВОЧНИК -->
+    <div id="reference" class="content-area tab-content">
+        <input type="text" id="searchRef" class="search-bar" placeholder="Поиск (оружие, доспехи, правила)...">
 
-        function switchTab(tabId) {
-            // Update buttons
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            // Update contents
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById('tab-' + tabId).classList.add('active');
-        }
+        <button class="accordion" id="acc-weapons">Оружие (Weapons)</button>
+        <div class="panel">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Eng</th>
+                            <th>Урон</th>
+                            <th>Тип</th>
+                            <th>Свойства</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="cat-row"><td colspan="5" style="text-align:center; color: var(--accent); text-shadow: var(--glow-text); font-weight: bold;">Простое рукопашное</td></tr>
+                        <tr class="item-row"><td>Боевой посох</td><td>Quarterstaff</td><td>1d6</td><td>Дробящий</td><td>Универсальное (1d8)</td></tr>
+                        <tr class="item-row"><td>Булава</td><td>Mace</td><td>1d6</td><td>Дробящий</td><td>Нет</td></tr>
+                        <tr class="item-row"><td>Кинжал</td><td>Dagger</td><td>1d4</td><td>Колющий</td><td>Фехтовальное, Легкое, Метательное (20/60)</td></tr>
+                        <tr class="item-row"><td>Копье</td><td>Spear</td><td>1d6</td><td>Колющий</td><td>Метательное (20/60), Универсальное (1d8)</td></tr>
+                        <tr class="item-row"><td>Легкий молот</td><td>Light Hammer</td><td>1d4</td><td>Дробящий</td><td>Легкое, Метательное (20/60)</td></tr>
+                        <tr class="item-row"><td>Метательное копье</td><td>Javelin</td><td>1d6</td><td>Колющий</td><td>Метательное (30/120)</td></tr>
+                        <tr class="item-row"><td>Палица</td><td>Greatclub</td><td>1d8</td><td>Дробящий</td><td>Двуручное</td></tr>
+                        <tr class="item-row"><td>Ручной топор</td><td>Handaxe</td><td>1d6</td><td>Рубящий</td><td>Легкое, Метательное (20/60)</td></tr>
+                        <tr class="item-row"><td>Серп</td><td>Sickle</td><td>1d4</td><td>Рубящий</td><td>Легкое</td></tr>
+                        
+                        <tr class="cat-row"><td colspan="5" style="text-align:center; color: var(--accent); text-shadow: var(--glow-text); font-weight: bold;">Воинское рукопашное</td></tr>
+                        <tr class="item-row"><td>Алебарда</td><td>Halberd</td><td>1d10</td><td>Рубящий</td><td>Двуручное, Тяжелое, Досягаемость</td></tr>
+                        <tr class="item-row"><td>Боевой молот</td><td>Warhammer</td><td>1d8</td><td>Дробящий</td><td>Универсальное (1d10)</td></tr>
+                        <tr class="item-row"><td>Глефа</td><td>Glaive</td><td>1d10</td><td>Рубящий</td><td>Двуручное, Тяжелое, Досягаемость</td></tr>
+                        <tr class="item-row"><td>Двуручный меч</td><td>Greatsword</td><td>2d6</td><td>Рубящий</td><td>Двуручное, Тяжелое</td></tr>
+                        <tr class="item-row"><td>Двуручный топор</td><td>Greataxe</td><td>1d12</td><td>Рубящий</td><td>Двуручное, Тяжелое</td></tr>
+                        <tr class="item-row"><td>Длинный меч</td><td>Longsword</td><td>1d8</td><td>Рубящий</td><td>Универсальное (1d10)</td></tr>
+                        <tr class="item-row"><td>Короткий меч</td><td>Shortsword</td><td>1d6</td><td>Колющий</td><td>Фехтовальное, Легкое</td></tr>
+                        <tr class="item-row"><td>Рапира</td><td>Rapier</td><td>1d8</td><td>Колющий</td><td>Фехтовальное</td></tr>
+                        
+                        <tr class="cat-row"><td colspan="5" style="text-align:center; color: var(--accent); text-shadow: var(--glow-text); font-weight: bold;">Дальнобойное</td></tr>
+                        <tr class="item-row"><td>Короткий лук</td><td>Shortbow</td><td>1d6</td><td>Колющий</td><td>Боеприпасы (80/320), Двуручное</td></tr>
+                        <tr class="item-row"><td>Легкий арбалет</td><td>Light Crossbow</td><td>1d8</td><td>Колющий</td><td>Боеприпасы (80/320), Двуручное, Перезарядка</td></tr>
+                        <tr class="item-row"><td>Длинный лук</td><td>Longbow</td><td>1d8</td><td>Колющий</td><td>Боеприпасы (150/600), Двуручное, Тяжелое</td></tr>
+                        <tr class="item-row"><td>Тяжелый арбалет</td><td>Heavy Crossbow</td><td>1d10</td><td>Колющий</td><td>Боеприпасы (100/400), Двуручное, Тяжелое, Перезарядка</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-        function toggleHistory() {
-            document.getElementById('history-drawer').classList.toggle('open');
-            document.getElementById('history-overlay').classList.toggle('open');
-        }
+        <button class="accordion" id="acc-armor">Доспехи и Щиты (Armor)</button>
+        <div class="panel">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Категория</th>
+                            <th>Название</th>
+                            <th>КД / AC</th>
+                            <th>Треб. Сила</th>
+                            <th>Скрытность</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="item-row"><td>Легкие</td><td>Стеганый</td><td>11 + Мод. Ловк.</td><td>Нет</td><td>Помеха</td></tr>
+                        <tr class="item-row"><td>Легкие</td><td>Кожаный</td><td>11 + Мод. Ловк.</td><td>Нет</td><td>Нет</td></tr>
+                        <tr class="item-row"><td>Легкие</td><td>Проклепанный</td><td>12 + Мод. Ловк.</td><td>Нет</td><td>Нет</td></tr>
+                        <tr class="item-row"><td>Средние</td><td>Шкурный</td><td>12 + Ловк. (макс 2)</td><td>Нет</td><td>Нет</td></tr>
+                        <tr class="item-row"><td>Средние</td><td>Кольчужная рубаха</td><td>13 + Ловк. (макс 2)</td><td>Нет</td><td>Нет</td></tr>
+                        <tr class="item-row"><td>Средние</td><td>Чешуйчатый</td><td>14 + Ловк. (макс 2)</td><td>Нет</td><td>Помеха</td></tr>
+                        <tr class="item-row"><td>Средние</td><td>Кираса</td><td>14 + Ловк. (макс 2)</td><td>Нет</td><td>Нет</td></tr>
+                        <tr class="item-row"><td>Средние</td><td>Полулаты</td><td>15 + Ловк. (макс 2)</td><td>Нет</td><td>Помеха</td></tr>
+                        <tr class="item-row"><td>Тяжелые</td><td>Колечный</td><td>14</td><td>Нет</td><td>Помеха</td></tr>
+                        <tr class="item-row"><td>Тяжелые</td><td>Кольчужный</td><td>16</td><td>Сила 13</td><td>Помеха</td></tr>
+                        <tr class="item-row"><td>Тяжелые</td><td>Наборный</td><td>17</td><td>Сила 15</td><td>Помеха</td></tr>
+                        <tr class="item-row"><td>Тяжелые</td><td>Латы</td><td>18</td><td>Сила 15</td><td>Помеха</td></tr>
+                        <tr class="item-row"><td>Щит</td><td>Щит</td><td>+2</td><td>Нет</td><td>Нет</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-        // --- 2. DICE STATE ---
-        const DICES = [4, 6, 8, 10, 12, 20, 100];
-        let currentPool = {4:0, 6:0, 8:0, 10:0, 12:0, 20:0, 100:0};
-        let lastRolledPool = null;
-        let lastRolledMod = 0;
+        <button class="accordion" id="acc-combat">Действия в бою (Combat Actions)</button>
+        <div class="panel">
+            <ul class="ref-list">
+                <li class="list-item"><strong>Атака:</strong> Удар оружием (1d20 + Мод + Мастерство).</li>
+                <li class="list-item"><strong>Захват / Толчок:</strong> Заменяет одну атаку; Сила (Атлетика) против Силы/Ловкости цели.</li>
+                <li class="list-item"><strong>Использование заклинания:</strong> Требует время каста, указанное в заклинании.</li>
+                <li class="list-item"><strong>Рывок (Dash):</strong> Дополнительное перемещение на текущий ход, равное базовой скорости.</li>
+                <li class="list-item"><strong>Отход (Disengage):</strong> Ваше перемещение не провоцирует атаки по возможности.</li>
+                <li class="list-item"><strong>Уклонение (Dodge):</strong> Атаки по вам идут с помехой, ваши спасброски Ловкости — с преимуществом.</li>
+                <li class="list-item"><strong>Помощь (Help):</strong> Дает союзнику Преимущество на следующую проверку или атаку.</li>
+                <li class="list-item"><strong>Засада (Hide):</strong> Ловкость (Скрытность) против пассивного Восприятия.</li>
+                <li class="list-item"><strong>Подготовка (Ready):</strong> Откладывание действия до триггера (использует реакцию).</li>
+            </ul>
+        </div>
+
+        <button class="accordion" id="acc-cond">Состояния (Conditions)</button>
+        <div class="panel">
+            <ul class="ref-list">
+                <li class="list-item"><strong>Ослепленный:</strong> Не видит, атаки с помехой, по нему — с преимуществом.</li>
+                <li class="list-item"><strong>Испуганный:</strong> Помеха на проверки/атаки, не может приблизиться к источнику.</li>
+                <li class="list-item"><strong>Схваченный:</strong> Скорость 0.</li>
+                <li class="list-item"><strong>Невидимый:</strong> Атакует с преимуществом, по нему — с помехой.</li>
+                <li class="list-item"><strong>Парализованный:</strong> Недееспособен, проваливает Силу/Ловкость, попадания с 5 футов = крит.</li>
+                <li class="list-item"><strong>Отравленный:</strong> Помеха на броски атаки и проверки.</li>
+                <li class="list-item"><strong>Сбитый с ног (Prone):</strong> Ползает, атакует с помехой. Атаки по нему с 5 футов — преимущество, издалека — помеха.</li>
+                <li class="list-item"><strong>Бессознательный:</strong> Недееспособен, падает, проваливает Силу/Ловкость. Урон = провал спаса от смерти.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Вкладка НАСТРОЙКИ -->
+    <div id="settings" class="content-area tab-content">
+        <h2 style="color: var(--accent); margin-bottom: 20px; text-shadow: var(--glow-text); font-size: 1.2rem; text-align: center; text-transform: uppercase;">Персонализация</h2>
         
-        // Cumulative sum for instant rolls until cleared
-        let instantSum = 0;
-        let instantDetails = [];
+        <div class="settings-block">
+            <label class="settings-label">
+                <span>Светлая тема</span>
+                <div class="switch">
+                    <input type="checkbox" id="themeToggleSwitch" onchange="toggleTheme()">
+                    <span class="slider"></span>
+                </div>
+            </label>
+        </div>
 
-        let historyLog = [];
+        <div class="settings-block">
+            <label class="settings-label">
+                <span>Акцентный цвет</span>
+                <input type="color" id="accentColorPicker" value="#00d2ff" oninput="updateAccentColor(this.value)">
+            </label>
+        </div>
 
-        // UI Elements
-        const elTotal = document.getElementById('display-total');
-        const elFormula = document.getElementById('display-formula');
-        const elPoolForm = document.getElementById('pool-formula-display');
-        const elModInput = document.getElementById('mod-input');
-        const elSumBox = document.getElementById('sum-box');
+        <div class="settings-block">
+            <label class="settings-label" style="flex-direction: column; align-items: flex-start;">
+                <span>Интенсивность свечения</span>
+                <input type="range" id="glowIntensity" min="0" max="2" step="0.1" value="1" oninput="updateGlow(this.value)">
+            </label>
+        </div>
+    </div>
 
-        // --- 3. CORE LOGIC ---
-        function updatePool(sides, delta) {
-            let newValue = currentPool[sides] + delta;
-            if(newValue >= 0 && newValue <= 99) {
-                currentPool[sides] = newValue;
-                document.getElementById(`pool-count-${sides}`).innerText = currentPool[sides];
-                renderPoolFormula();
+    <script>
+        // --- ИНИЦИАЛИЗАЦИЯ НАСТРОЕК ---
+        function hexToRgb(hex) {
+            let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
+        }
+
+        function updateAccentColor(hex) {
+            const rgb = hexToRgb(hex);
+            if(rgb) {
+                document.documentElement.style.setProperty('--accent', hex);
+                document.documentElement.style.setProperty('--accent-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+                localStorage.setItem('dnd-accent', hex);
             }
         }
 
-        function renderPoolFormula() {
-            let parts = [];
-            DICES.forEach(d => {
-                if(currentPool[d] > 0) parts.push(`${currentPool[d]}d${d}`);
-            });
-            if(parts.length === 0) {
-                elPoolForm.innerHTML = '<span class="text-[var(--text-muted)] italic">Пусто</span>';
+        function updateGlow(val) {
+            document.documentElement.style.setProperty('--glow-mult', val);
+            localStorage.setItem('dnd-glow', val);
+        }
+
+        function toggleTheme() {
+            const isLight = document.getElementById('themeToggleSwitch').checked;
+            if (isLight) {
+                document.body.classList.add('light-theme');
+                localStorage.setItem('dnd-theme', 'light');
             } else {
-                elPoolForm.innerText = parts.join(' + ');
+                document.body.classList.remove('light-theme');
+                localStorage.setItem('dnd-theme', 'dark');
             }
         }
 
-        function clearAll() {
-            // Clear pool
-            DICES.forEach(d => {
-                currentPool[d] = 0;
-                document.getElementById(`pool-count-${d}`).innerText = '0';
+        // Загрузка сохраненных настроек
+        window.onload = () => {
+            const savedAccent = localStorage.getItem('dnd-accent');
+            if (savedAccent) {
+                document.getElementById('accentColorPicker').value = savedAccent;
+                updateAccentColor(savedAccent);
+            }
+            const savedGlow = localStorage.getItem('dnd-glow');
+            if (savedGlow) {
+                document.getElementById('glowIntensity').value = savedGlow;
+                updateGlow(savedGlow);
+            }
+            const savedTheme = localStorage.getItem('dnd-theme');
+            if (savedTheme === 'light') {
+                document.getElementById('themeToggleSwitch').checked = true;
+                document.body.classList.add('light-theme');
+            }
+        };
+
+        // --- Вкладки ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // --- Аккордеоны ---
+        const acc = document.getElementsByClassName("accordion");
+        for (let i = 0; i < acc.length; i++) {
+            acc[i].addEventListener("click", function() {
+                this.classList.toggle("active");
+                const panel = this.nextElementSibling;
+                if (panel.style.maxHeight) {
+                    panel.style.maxHeight = null;
+                } else {
+                    panel.style.maxHeight = panel.scrollHeight + "px";
+                }
             });
-            elModInput.value = 0;
-            renderPoolFormula();
-
-            // Clear instant sum
-            instantSum = 0;
-            instantDetails = [];
-            elTotal.innerText = '0';
-            elFormula.innerText = 'Киньте дайс или соберите пул';
         }
 
-        function animateSum() {
-            elSumBox.classList.remove('highlight');
-            void elSumBox.offsetWidth; // trigger reflow
-            elSumBox.classList.add('highlight');
-            setTimeout(() => elSumBox.classList.remove('highlight'), 300);
-        }
-
-        function animateDieButton(sides) {
-            const btn = document.getElementById(`die-btn-${sides}`);
-            btn.classList.remove('animate-roll');
-            void btn.offsetWidth;
-            btn.classList.add('animate-roll');
-        }
-
-        // Action: Instant Roll
-        function instantRoll(sides) {
-            animateDieButton(sides);
+        // --- УМНЫЙ ПОИСК (Сортировка: сначала по названию, потом по свойствам) ---
+        document.getElementById('searchRef').addEventListener('input', function(e) {
+            const query = e.target.value.toLowerCase().trim();
             
-            const result = Math.floor(Math.random() * sides) + 1;
-            instantSum += result;
+            Array.from(acc).forEach(a => {
+                const panel = a.nextElementSibling;
+                const tbody = panel.querySelector('tbody');
+                const list = panel.querySelector('.ref-list');
+                
+                let matchesTitle = [];
+                let matchesOther = [];
+
+                if (tbody) {
+                    const rows = Array.from(tbody.querySelectorAll('.item-row'));
+                    rows.forEach(row => {
+                        const titleCell = row.children[0]; // Название на русском
+                        const titleEng = row.children[1];  // Название на английском
+                        const titleText = titleCell ? titleCell.textContent.toLowerCase() : '';
+                        const engText = titleEng ? titleEng.textContent.toLowerCase() : '';
+                        
+                        const fullRowText = row.textContent.toLowerCase();
+
+                        // Убираем из строк старую подсветку перед проверкой
+                        row.style.display = 'none';
+
+                        if (query === '') {
+                            row.style.display = '';
+                        } else {
+                            // Проверяем: начинается ли или совпадает с НАЗВАНИЕМ (рус/eng)
+                            if (titleText.includes(query) || engText.includes(query)) {
+                                matchesTitle.push(row);
+                            } else if (fullRowText.includes(query)) {
+                                matchesOther.push(row);
+                            }
+                        }
+                    });
+
+                    // Переупорядочиваем элементы в таблице: сначала по названию, потом остальное
+                    if (query !== '') {
+                        // Временно очищаем или просто переставляем ноды
+                        matchesTitle.forEach(r => { r.style.display = ''; tbody.appendChild(r); });
+                        matchesOther.forEach(r => { r.style.display = ''; tbody.appendChild(r); });
+                    }
+
+                    // Скрываем/показываем подзаголовки категорий если нужно
+                    panel.querySelectorAll('.cat-row').forEach(cr => {
+                        cr.style.display = query === '' ? '' : 'none'; // при поиске категории скрываем для чистоты списка
+                    });
+
+                    let totalMatches = matchesTitle.length + matchesOther.length;
+                    if (query.length > 0) {
+                        if (totalMatches > 0) {
+                            a.style.display = 'flex';
+                            a.classList.add("active");
+                            panel.style.maxHeight = panel.scrollHeight + "px";
+                        } else {
+                            a.style.display = 'none';
+                            a.classList.remove("active");
+                            panel.style.maxHeight = null;
+                        }
+                    } else {
+                        a.style.display = 'flex';
+                        a.classList.remove("active");
+                        panel.style.maxHeight = null;
+                    }
+                }
+
+                if (list) {
+                    const items = Array.from(list.querySelectorAll('.list-item'));
+                    items.forEach(li => {
+                        const strong = li.querySelector('strong');
+                        const titleText = strong ? strong.textContent.toLowerCase() : '';
+                        const fullText = li.textContent.toLowerCase();
+
+                        li.style.display = 'none';
+
+                        if (query === '') {
+                            li.style.display = '';
+                        } else {
+                            if (titleText.includes(query)) {
+                                matchesTitle.push(li);
+                            } else if (fullText.includes(query)) {
+                                matchesOther.push(li);
+                            }
+                        }
+                    });
+
+                    if (query !== '') {
+                        matchesTitle.forEach(i => { i.style.display = ''; list.appendChild(i); });
+                        matchesOther.forEach(i => { i.style.display = ''; list.appendChild(i); });
+                    }
+
+                    let totalMatches = matchesTitle.length + matchesOther.length;
+                    if (query.length > 0) {
+                        if (totalMatches > 0) {
+                            a.style.display = 'flex';
+                            a.classList.add("active");
+                            panel.style.maxHeight = panel.scrollHeight + "px";
+                        } else {
+                            a.style.display = 'none';
+                            a.classList.remove("active");
+                            panel.style.maxHeight = null;
+                        }
+                    } else {
+                        a.style.display = 'flex';
+                        a.classList.remove("active");
+                        panel.style.maxHeight = null;
+                    }
+                }
+            });
+        });
+
+        // --- ЛОГИКА РОЛЛЕРА ---
+        let currentSingleSum = 0;
+        let pool = {4: 0, 6: 0, 8: 0, 10: 0, 12: 0, 20: 0, 100: 0};
+
+        const circle = document.getElementById('diceCircle');
+        const radius = 125;
+        const dices = [4, 6, 8, 10, 12, 20, 100];
+        const angleStep = (2 * Math.PI) / dices.length;
+
+        dices.forEach((d, i) => {
+            const angle = i * angleStep - Math.PI/2; 
+            const x = radius * Math.cos(angle);
+            const y = radius * Math.sin(angle);
             
-            let resStr = result.toString();
-            if(sides === 20 && result === 20) resStr = `<span class="text-green-500 font-bold">20</span>`;
-            if(sides === 20 && result === 1) resStr = `<span class="text-red-500 font-bold">1</span>`;
+            const btn = document.createElement('div');
+            btn.className = 'dice-btn';
+            btn.innerHTML = `d${d}`;
+            btn.style.left = `calc(50% + ${x}px)`;
+            btn.style.top = `calc(50% + ${y}px)`;
+            btn.onclick = () => rollSingle(d);
+            
+            circle.appendChild(btn);
+        });
 
-            instantDetails.push(`1d${sides} [${resStr}]`);
-
-            // Update UI
-            elTotal.innerText = instantSum;
-            elFormula.innerHTML = instantDetails.join(' + ');
-            animateSum();
-
-            // Add to history (Single roll)
-            addToHistory(`1d${sides}`, result.toString(), result);
+        function animateCenter() {
+            const center = document.getElementById('centerSumBlock');
+            center.style.transform = 'translate(-50%, -50%) scale(1.1)';
+            setTimeout(() => {
+                center.style.transform = 'translate(-50%, -50%) scale(1)';
+            }, 150);
         }
 
-        // Action: Roll Built Pool
-        function rollPool(useLast = false) {
-            let targetPool = useLast ? lastRolledPool : currentPool;
-            let targetMod = useLast ? lastRolledMod : parseInt(elModInput.value) || 0;
+        function addToHistory(text) {
+            const hist = document.getElementById('history');
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            
+            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+            item.innerHTML = `<span>${text}</span> <span class="history-time">${time}</span>`;
+            
+            hist.insertBefore(item, hist.children[1]);
+            if(hist.children.length > 21) hist.lastChild.remove();
+        }
 
-            if(!targetPool) return;
+        function rollSingle(max) {
+            animateCenter();
+            const roll = Math.floor(Math.random() * max) + 1;
+            const mod = parseInt(document.getElementById('singleMod').value) || 0;
+            const isSum = document.getElementById('sumToggle').checked;
 
-            let totalSum = 0;
-            let formulaParts = [];
-            let detailParts = [];
-            let hasDice = false;
+            let finalValue;
+            let displayMod = mod !== 0 ? (mod > 0 ? `+${mod}` : mod) : '';
 
-            DICES.forEach(sides => {
-                const count = targetPool[sides];
-                if(count > 0) {
-                    hasDice = true;
-                    formulaParts.push(`${count}d${sides}`);
-                    
+            if (isSum) {
+                currentSingleSum += roll;
+                finalValue = currentSingleSum + mod;
+                document.getElementById('centerResult').textContent = finalValue;
+                document.getElementById('centerDetail').textContent = `Сумма ${displayMod}`;
+                addToHistory(`+d${max}(${roll}) ${displayMod} = <strong>${finalValue}</strong>`);
+            } else {
+                currentSingleSum = roll;
+                finalValue = roll + mod;
+                document.getElementById('centerResult').textContent = finalValue;
+                document.getElementById('centerDetail').textContent = `d${max} ${displayMod}`;
+                addToHistory(`d${max} (${roll}) ${displayMod} = <strong>${finalValue}</strong>`);
+            }
+
+            const resultEl = document.getElementById('centerResult');
+            resultEl.style.color = '';
+            if (!isSum && max === 20) {
+                if (roll === 20) resultEl.style.color = 'var(--crit-success)';
+                if (roll === 1) resultEl.style.color = 'var(--crit-fail)';
+            }
+        }
+
+        function updatePool(d, change) {
+            pool[d] = Math.max(0, pool[d] + change);
+            document.getElementById(`pool-d${d}`).textContent = `${pool[d]}d${d}`;
+        }
+
+        function clearPool() {
+            Object.keys(pool).forEach(d => {
+                pool[d] = 0;
+                document.getElementById(`pool-d${d}`).textContent = `0d${d}`;
+            });
+            document.getElementById('poolMod').value = 0;
+            currentSingleSum = 0;
+            document.getElementById('centerResult').textContent = '0';
+            document.getElementById('centerDetail').textContent = '-';
+            document.getElementById('centerResult').style.color = '';
+            document.getElementById('singleMod').value = 0;
+        }
+
+        function rollPool() {
+            let total = 0;
+            let details = [];
+            const mod = parseInt(document.getElementById('poolMod').value) || 0;
+            let hasRolls = false;
+
+            Object.keys(pool).forEach(d => {
+                const count = pool[d];
+                if (count > 0) {
+                    hasRolls = true;
                     let rolls = [];
                     for(let i=0; i<count; i++) {
-                        const r = Math.floor(Math.random() * sides) + 1;
-                        totalSum += r;
-                        
-                        let rStr = r.toString();
-                        if(sides === 20 && r === 20) rStr = `<span class="text-green-500 font-bold">20</span>`;
-                        if(sides === 20 && r === 1) rStr = `<span class="text-red-500 font-bold">1</span>`;
-                        rolls.push(rStr);
+                        rolls.push(Math.floor(Math.random() * d) + 1);
                     }
-                    detailParts.push(`${count}d${sides} [${rolls.join(', ')}]`);
+                    const sum = rolls.reduce((a,b)=>a+b,0);
+                    total += sum;
+                    details.push(`${count}d${d}[${rolls.join(',')}]`);
                 }
             });
 
-            if(!hasDice && targetMod === 0) return; // Nothing to roll
+            if (!hasRolls) return;
+            animateCenter();
 
-            totalSum += targetMod;
-
-            let finalFormula = formulaParts.join(' + ');
-            if (targetMod > 0) finalFormula += ` + ${targetMod}`;
-            else if (targetMod < 0) finalFormula += ` - ${Math.abs(targetMod)}`;
-
-            let detailsHtml = detailParts.join(' + ');
-            if (targetMod > 0) detailsHtml += ` <span class="text-[var(--text-main)]">+ ${targetMod}</span>`;
-            else if (targetMod < 0) detailsHtml += ` <span class="text-[var(--text-main)]">- ${Math.abs(targetMod)}</span>`;
-
-            // Reset instant sum because a new pool was rolled
-            instantSum = 0;
-            instantDetails = [];
-
-            // Update UI
-            elTotal.innerText = totalSum;
-            elFormula.innerHTML = detailsHtml || targetMod;
-            animateSum();
-
-            // Save state for Re-roll
-            if (!useLast) {
-                lastRolledPool = {...currentPool};
-                lastRolledMod = targetMod;
-            }
-
-            // Add to history
-            addToHistory(finalFormula, detailsHtml || targetMod.toString(), totalSum);
-        }
-
-        function repeatLastRoll() {
-            if(lastRolledPool) rollPool(true);
-        }
-
-        // --- 4. HISTORY ---
-        function addToHistory(formula, details, total) {
-            const time = new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+            const finalTotal = total + mod;
+            const modStr = mod !== 0 ? (mod > 0 ? `+${mod}` : mod) : '';
             
-            const item = { time, formula, details, total };
-            historyLog.unshift(item);
-            if(historyLog.length > 20) historyLog.pop();
+            currentSingleSum = total; 
             
-            renderHistory();
-        }
-
-        function renderHistory() {
-            const list = document.getElementById('history-list');
-            list.innerHTML = '';
+            document.getElementById('centerResult').textContent = finalTotal;
+            document.getElementById('centerDetail').textContent = 'Пул';
+            document.getElementById('centerResult').style.color = '';
             
-            historyLog.forEach(item => {
-                const el = document.createElement('div');
-                el.className = 'bg-[var(--bg-surface-hover)] p-3 rounded-xl border border-[var(--border-color)] flex flex-col gap-1';
-                el.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div class="font-bold text-xs text-[var(--accent)]">${item.formula}</div>
-                        <div class="text-[10px] text-[var(--text-muted)]">${item.time}</div>
-                    </div>
-                    <div class="text-xs font-mono text-[var(--text-muted)] break-words leading-relaxed">${item.details}</div>
-                    <div class="text-right text-lg font-black text-[var(--text-main)] mt-1">Итог: ${item.total}</div>
-                `;
-                list.appendChild(el);
-            });
+            addToHistory(`Пул: ${details.join(' + ')} ${modStr} = <strong>${finalTotal}</strong>`);
         }
     </script>
 </body>
