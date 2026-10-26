@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>D&D 5e Helper & Dice Roller</title>
+    <!-- Tailwind CSS for utility classes -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+        /* CSS Variables for Theming */
+        :root {
+            --bg-body: #0f172a; /* slate-900 */
+            --bg-surface: #1e293b; /* slate-800 */
+            --bg-surface-hover: #334155; /* slate-700 */
+            --text-main: #f8fafc; /* slate-50 */
+            --text-muted: #94a3b8; /* slate-400 */
+            --border-color: #334155; /* slate-700 */
+            
+            --accent: #3b82f6; /* blue-500 */
+            --accent-glow: rgba(59, 130, 246, 0.4);
+            
+            --dice-bg: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            --dice-shadow: 0 4px 15px rgba(0,0,0,0.4), inset 0 -3px 8px rgba(0,0,0,0.3), inset 0 3px 8px rgba(255,255,255,0.2);
+            --dice-text: #ffffff;
+            
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+        }
+
+        .theme-light {
+            --bg-body: #f8fafc; /* slate-50 */
+            --bg-surface: #ffffff; 
+            --bg-surface-hover: #f1f5f9; /* slate-100 */
+            --text-main: #0f172a; /* slate-900 */
+            --text-muted: #64748b; /* slate-500 */
+            --border-color: #e2e8f0; /* slate-200 */
+            
+            --accent: #2563eb; /* blue-600 */
+            --accent-glow: rgba(37, 99, 235, 0.2);
+            
+            --dice-bg: linear-gradient(135deg, #60a5fa, #2563eb);
+            --dice-shadow: 0 4px 10px rgba(37,99,235,0.3), inset 0 -3px 5px rgba(0,0,0,0.1), inset 0 3px 5px rgba(255,255,255,0.5);
+            --dice-text: #ffffff;
+            
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    }
+
+    /* Core Structure */
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--bg-body);
+        color: var(--text-main);
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden; /* Prevent body scroll */
+        display: flex;
+        flex-direction: column;
+        touch-action: auto; /* ИСПРАВЛЕНО: Возвращаем стандартную обработку касаний */
+        -webkit-tap-highlight-color: transparent;
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* Header */
+        header {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background-color: var(--bg-surface);
+            border-bottom: 1px solid var(--border-color);
+            z-index: 20;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        /* Navigation */
+        .nav-tabs {
+            display: flex;
+            background-color: var(--bg-surface);
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        .nav-btn {
+            flex: 1;
+            text-align: center;
+            padding: 0.75rem 0;
+            font-weight: 700;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .nav-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            background-color: var(--bg-surface-hover);
+        }
+
+        /* Tab Contents */
+    .tab-content {
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* ДОБАВЛЕНО: Плавный скролл на iOS/WebKit */
+        touch-action: pan-y; /* ДОБАВЛЕНО: Разрешаем только вертикальный скролл */
+        display: none;
+        padding: 1rem;
+        position: relative;
+    }
+    .tab-content.active {
+            display: block;
+            animation: fadeIn 0.2s ease-out;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* === DICE UI === */
+        .sum-container {
+            background-color: var(--bg-surface);
+            border: 2px solid var(--border-color);
+            border-radius: 1.5rem;
+            box-shadow: var(--card-shadow);
+            padding: 1.5rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            transition: border-color 0.3s;
+        }
+        .sum-container.highlight {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+        
+        .sum-label {
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.25rem;
+        }
+        
+        .sum-value {
+            font-size: 4rem;
+            font-weight: 900;
+            line-height: 1;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+
+        .sum-formula {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-family: monospace;
+            min-height: 1.25rem;
+            word-break: break-word;
+        }
+
+        /* Dice Grid */
+        .dice-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .dice-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .die-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            background: var(--dice-bg);
+            color: var(--dice-text);
+            font-size: 1.25rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--dice-shadow);
+            border: 1px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+        .die-btn:active {
+            transform: scale(0.9) translateY(2px);
+        }
+
+        /* Shake animation for instant roll */
+        @keyframes popRoll {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15) rotate(5deg); }
+            100% { transform: scale(1) rotate(0); }
+        }
+        .animate-roll {
+            animation: popRoll 0.2s ease-out;
+        }
+
+        .pool-controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .pool-btn {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--bg-surface-hover);
+            color: var(--text-main);
+            font-weight: bold;
+            font-size: 1rem;
+            line-height: 1;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .pool-btn:active { background-color: var(--accent); color: white; }
+        .pool-count {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        /* Pool Action Area */
+        .pool-action-area {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1rem;
+            box-shadow: var(--card-shadow);
+        }
+
+        .input-mod {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            text-align: center;
+            font-weight: bold;
+            width: 60px;
+            outline: none;
+        }
+        .input-mod:focus { border-color: var(--accent); }
+
+        .btn-primary {
+            background-color: var(--accent);
+            color: white;
+            font-weight: 700;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            box-shadow: 0 4px 10px var(--accent-glow);
+            transition: transform 0.1s, box-shadow 0.2s;
+        }
+        .btn-primary:active { transform: scale(0.96); }
+        
+        .btn-secondary {
+            background-color: var(--bg-surface-hover);
+            color: var(--text-main);
+            font-weight: 600;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            border: 1px solid var(--border-color);
+        }
+        .btn-secondary:active { background-color: var(--border-color); }
+
+        /* === HISTORY DRAWER === */
+        .history-drawer {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: 70vh;
+            background-color: var(--bg-surface);
+            border-top: 1px solid var(--border-color);
+            border-radius: 1.5rem 1.5rem 0 0;
+            box-shadow: 0 -10px 25px rgba(0,0,0,0.3);
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+        }
+        .history-drawer.open {
+            transform: translateY(0);
+        }
+        .history-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 40;
+        }
+        .history-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* === REFERENCE UI (ACCORDIONS) === */
+        details {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            margin-bottom: 0.75rem;
+            overflow: hidden;
+        }
+        summary {
+            font-weight: 700;
+            padding: 1rem;
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+        summary::-webkit-details-marker { display: none; }
+        summary::after {
+            content: '+';
+            font-size: 1.5rem;
+            font-weight: 400;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+        }
+        details[open] summary { border-bottom: 1px solid var(--border-color); }
+        details[open] summary::after { transform: rotate(45deg); color: var(--accent); }
+    
+    .details-content {
+        padding: 1rem;
+        font-size: 0.875rem;
+        line-height: 1.6;
+        color: var(--text-muted);
+        -webkit-overflow-scrolling: touch; /* ДОБАВЛЕНО: Плавный скролл внутри аккордеонов */
+        touch-action: auto; 
+    }
+    .details-content b, .details-content strong {
+        color: var(--text-main);
+    }
+
+    /* Tables */
+    .table-wrap {
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch; /* ДОБАВЛЕНО: Плавный горизонтальный скролл */
+        touch-action: pan-x pan-y; /* ДОБАВЛЕНО: Разрешаем свайпать таблицы во все стороны */
+        margin: -1rem; /* Stretch to edges of details-content */
+    }
+    table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+            min-width: 400px;
+        }
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th {
+            background-color: var(--bg-surface-hover);
+            color: var(--text-main);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        tr:last-child td { border-bottom: none; }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="font-black text-lg tracking-wider text-[var(--accent)]">D&D HELPER</div>
+        <div class="flex gap-2">
+            <button onclick="toggleHistory()" class="btn-secondary flex items-center justify-center p-2 rounded-lg" title="История">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </button>
+            <button onclick="toggleTheme()" class="btn-secondary flex items-center justify-center p-2 rounded-lg" title="Тема">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Tabs Navigation -->
+    <div class="nav-tabs">
+        <button class="nav-btn active" onclick="switchTab('dice')">Дайсы</button>
+        <button class="nav-btn" onclick="switchTab('ref')">Справочник</button>
+    </div>
+
+    <!-- TAB 1: DICE POOL -->
+    <main id="tab-dice" class="tab-content active">
+        <div class="max-w-xl mx-auto pb-4">
+            
+            <!-- Result Display -->
+            <div id="sum-box" class="sum-container">
+                <div class="sum-label">Сумма</div>
+                <div id="display-total" class="sum-value">0</div>
+                <div id="display-formula" class="sum-formula">Киньте дайс или соберите пул</div>
+            </div>
+
+            <!-- Dice Grid -->
+            <div class="dice-grid">
+                <!-- Generator loop for dice -->
+                <script>
+                    const diceTypes = [4, 6, 8, 10, 12, 20, 100];
+                    diceTypes.forEach(d => {
+                        document.write(`
+                            <div class="dice-card">
+                                <button class="die-btn" id="die-btn-${d}" onclick="instantRoll(${d})">d${d}</button>
+                                <div class="pool-controls">
+                                    <button class="pool-btn" onclick="updatePool(${d}, -1)">-</button>
+                                    <span class="pool-count" id="pool-count-${d}">0</span>
+                                    <button class="pool-btn" onclick="updatePool(${d}, 1)">+</button>
+                                </div>
+                            </div>
+                        `);
+                    });
+                </script>
+            </div>
+
+            <!-- Pool Action Area -->
+            <div class="pool-action-area">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Текущий пул</span>
+                    <button onclick="clearAll()" class="text-xs font-bold text-red-400 hover:text-red-300 transition-colors uppercase">Очистить</button>
+                </div>
+                
+                <div id="pool-formula-display" class="font-mono text-sm text-[var(--text-main)] mb-4 min-h-[1.25rem] break-words font-semibold">
+                    Пусто
+                </div>
+
+                <div class="flex gap-3 items-center">
+                    <div class="flex flex-col">
+                        <label class="text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Модификатор</label>
+                        <input type="number" id="mod-input" value="0" class="input-mod">
+                    </div>
+                    <button onclick="rollPool()" class="btn-primary flex-1 h-full">Бросить пул</button>
+                </div>
+                
+                <div class="mt-3">
+                    <button onclick="repeatLastRoll()" class="btn-secondary w-full">Повторить прошлый бросок</button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- TAB 2: REFERENCE -->
+    <main id="tab-ref" class="tab-content">
+        <div class="max-w-xl mx-auto pb-4">
+            
+            <!-- Accordion 1: Weapons -->
+            <details>
+                <summary>Оружие (Weapons)</summary>
+                <div class="details-content p-0">
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>Название</th><th>Eng</th><th>Урон</th><th>Тип</th><th>Свойства</th></tr></thead>
+                            <tbody>
+                                <tr><td colspan="5" style="background: var(--bg-surface); text-align: center; font-weight: bold;">Простое рукопашное</td></tr>
+                                <tr><td>Боевой посох</td><td>Quarterstaff</td><td>1d6</td><td>Дробящий</td><td>Универсальное (1d8)</td></tr>
+                                <tr><td>Булава</td><td>Mace</td><td>1d6</td><td>Дробящий</td><td>Нет</td></tr>
+                                <tr><td>Кинжал</td><td>Dagger</td><td>1d4</td><td>Колющий</td><td>Фехтовальное, Легкое, Метательное (20/60)</td></tr>
+                                <tr><td>Копье</td><td>Spear</td><td>1d6</td><td>Колющий</td><td>Метательное (20/60), Универсальное (1d8)</td></tr>
+                                <tr><td>Легкий молот</td><td>Light Hammer</td><td>1d4</td><td>Дробящий</td><td>Легкое, Метательное (20/60)</td></tr>
+                                <tr><td>Метательное копье</td><td>Javelin</td><td>1d6</td><td>Колющий</td><td>Метательное (30/120)</td></tr>
+                                <tr><td>Палица</td><td>Greatclub</td><td>1d8</td><td>Дробящий</td><td>Двуручное</td></tr>
+                                <tr><td>Ручной топор</td><td>Handaxe</td><td>1d6</td><td>Рубящий</td><td>Легкое, Метательное (20/60)</td></tr>
+                                <tr><td>Серп</td><td>Sickle</td><td>1d4</td><td>Рубящий</td><td>Легкое</td></tr>
+
+                                <tr><td colspan="5" style="background: var(--bg-surface); text-align: center; font-weight: bold;">Простое дальнобойное</td></tr>
+                                <tr><td>Дротик</td><td>Dart</td><td>1d4</td><td>Колющий</td><td>Фехтовальное, Метательное (20/60)</td></tr>
+                                <tr><td>Короткий лук</td><td>Shortbow</td><td>1d6</td><td>Колющий</td><td>Боеприпасы (80/320), Двуручное</td></tr>
+                                <tr><td>Легкий арбалет</td><td>Light Crossbow</td><td>1d8</td><td>Колющий</td><td>Боеприпасы (80/320), Двуручное, Перезарядка</td></tr>
+                                <tr><td>Праща</td><td>Sling</td><td>1d4</td><td>Дробящий</td><td>Боеприпасы (30/120)</td></tr>
+
+                                <tr><td colspan="5" style="background: var(--bg-surface); text-align: center; font-weight: bold;">Воинское рукопашное</td></tr>
+                                <tr><td>Алебарда</td><td>Halberd</td><td>1d10</td><td>Рубящий</td><td>Двуручное, Тяжелое, Досягаемость</td></tr>
+                                <tr><td>Боевой молот</td><td>Warhammer</td><td>1d8</td><td>Дробящий</td><td>Универсальное (1d10)</td></tr>
+                                <tr><td>Глефа</td><td>Glaive</td><td>1d10</td><td>Рубящий</td><td>Двуручное, Тяжелое, Досягаемость</td></tr>
+                                <tr><td>Двуручный меч</td><td>Greatsword</td><td>2d6</td><td>Рубящий</td><td>Двуручное, Тяжелое</td></tr>
+                                <tr><td>Двуручный топор</td><td>Greataxe</td><td>1d12</td><td>Рубящий</td><td>Двуручное, Тяжелое</td></tr>
+                                <tr><td>Длинное копье</td><td>Lance</td><td>1d12</td><td>Колющий</td><td>Досягаемость, Особое</td></tr>
+                                <tr><td>Длинный меч</td><td>Longsword</td><td>1d8</td><td>Рубящий</td><td>Универсальное (1d10)</td></tr>
+                                <tr><td>Кнут</td><td>Whip</td><td>1d4</td><td>Рубящий</td><td>Досягаемость, Фехтовальное</td></tr>
+                                <tr><td>Короткий меч</td><td>Shortsword</td><td>1d6</td><td>Колющий</td><td>Фехтовальное, Легкое</td></tr>
+                                <tr><td>Молот</td><td>Maul</td><td>2d6</td><td>Дробящий</td><td>Двуручное, Тяжелое</td></tr>
+                                <tr><td>Пика</td><td>Pike</td><td>1d10</td><td>Колющий</td><td>Двуручное, Тяжелое, Досягаемость</td></tr>
+                                <tr><td>Рапира</td><td>Rapier</td><td>1d8</td><td>Колющий</td><td>Фехтовальное</td></tr>
+                                <tr><td>Секира</td><td>Battleaxe</td><td>1d8</td><td>Рубящий</td><td>Универсальное (1d10)</td></tr>
+                                <tr><td>Скимитар</td><td>Scimitar</td><td>1d6</td><td>Рубящий</td><td>Фехтовальное, Легкое</td></tr>
+                                <tr><td>Трезубец</td><td>Trident</td><td>1d6</td><td>Колющий</td><td>Метательное (20/60), Универсальное (1d10)</td></tr>
+                                <tr><td>Утренняя звезда</td><td>Morningstar</td><td>1d8</td><td>Колющий</td><td>Нет</td></tr>
+                                <tr><td>Цеп</td><td>Flail</td><td>1d8</td><td>Дробящий</td><td>Нет</td></tr>
+
+                                <tr><td colspan="5" style="background: var(--bg-surface); text-align: center; font-weight: bold;">Воинское дальнобойное</td></tr>
+                                <tr><td>Длинный лук</td><td>Longbow</td><td>1d8</td><td>Колющий</td><td>Боеприпасы (150/600), Двуручное, Тяжелое</td></tr>
+                                <tr><td>Духовая трубка</td><td>Blowgun</td><td>1</td><td>Колющий</td><td>Боеприпасы (25/100), Перезарядка</td></tr>
+                                <tr><td>Ручной арбалет</td><td>Hand Crossbow</td><td>1d6</td><td>Колющий</td><td>Боеприпасы (30/120), Легкое, Перезарядка</td></tr>
+                                <tr><td>Сеть</td><td>Net</td><td>0</td><td>Нет</td><td>Особое, Метательное (5/15)</td></tr>
+                                <tr><td>Тяжелый арбалет</td><td>Heavy Crossbow</td><td>1d10</td><td>Колющий</td><td>Боеприпасы (100/400), Двуручное, Тяжелое, Перезарядка</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </details>
+
+            <!-- Accordion 2: Armor -->
+            <details>
+                <summary>Доспехи и Щиты (Armor)</summary>
+                <div class="details-content p-0">
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>Категория</th><th>Название</th><th>КД / AC</th><th>Треб. Сила</th><th>Скрытность</th></tr></thead>
+                            <tbody>
+                                <tr><td>Легкие</td><td>Стеганый</td><td>11 + Мод. Ловкости</td><td>Нет</td><td>Помеха</td></tr>
+                                <tr><td>Легкие</td><td>Кожаный</td><td>11 + Мод. Ловкости</td><td>Нет</td><td>Нет</td></tr>
+                                <tr><td>Легкие</td><td>Проклепанный</td><td>12 + Мод. Ловкости</td><td>Нет</td><td>Нет</td></tr>
+                                <tr><td>Средние</td><td>Шкурный</td><td>12 + Ловк. (макс. 2)</td><td>Нет</td><td>Нет</td></tr>
+                                <tr><td>Средние</td><td>Кольчужная рубаха</td><td>13 + Ловк. (макс. 2)</td><td>Нет</td><td>Нет</td></tr>
+                                <tr><td>Средние</td><td>Чешуйчатый</td><td>14 + Ловк. (макс. 2)</td><td>Нет</td><td>Помеха</td></tr>
+                                <tr><td>Средние</td><td>Кираса</td><td>14 + Ловк. (макс. 2)</td><td>Нет</td><td>Нет</td></tr>
+                                <tr><td>Средние</td><td>Полулаты</td><td>15 + Ловк. (макс. 2)</td><td>Нет</td><td>Помеха</td></tr>
+                                <tr><td>Тяжелые</td><td>Колечный</td><td>14</td><td>Нет</td><td>Помеха</td></tr>
+                                <tr><td>Тяжелые</td><td>Кольчужный</td><td>16</td><td>Сила 13</td><td>Помеха</td></tr>
+                                <tr><td>Тяжелые</td><td>Наборный</td><td>17</td><td>Сила 15</td><td>Помеха</td></tr>
+                                <tr><td>Тяжелые</td><td>Латы</td><td>18</td><td>Сила 15</td><td>Помеха</td></tr>
+                                <tr><td>Щит</td><td>Щит</td><td>+2 к КД</td><td>Нет</td><td>Нет</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </details>
+
+            <!-- Accordion 3: Combat Actions -->
+            <details>
+                <summary>Действия в бою (Combat Actions)</summary>
+                <div class="details-content">
+                    <ul class="list-disc pl-4 space-y-3">
+                        <li><strong>Атака (Attack):</strong> Удар оружием ближнего или дальнего боя (1d20 + Модификатор характеристики + Бонус мастерства при владении); попадание происходит при результате &ge; КД цели.</li>
+                        <li><strong>Захват / Толчок (Grapple / Shove):</strong> Заменяет одну атаку в ближнем бою; требует встречный бросок Силы (Атлетика) против Силы (Атлетика) или Ловкости (Акробатика) цели.</li>
+                        <li><strong>Использование заклинания (Cast a Spell):</strong> Применение магии, где время каста определяется самим заклинанием.</li>
+                        <li><strong>Рывок (Dash):</strong> Дает дополнительное перемещение на текущий ход, равное базовой скорости персонажа.</li>
+                        <li><strong>Отход (Disengage):</strong> Перемещение персонажа в этот ход не провоцирует атаки по возможности.</li>
+                        <li><strong>Уклонение (Dodge):</strong> Любые атаки по вам совершаются с Помехой, а спасброски Ловкости — с Преимуществом (действует, если персонаж дееспособен и видит нападающего).</li>
+                        <li><strong>Помощь (Help):</strong> Дает союзнику Преимущество на следующую проверку характеристики или бросок атаки против врага в пределах 5 футов.</li>
+                        <li><strong>Засада / Скрытность (Hide):</strong> Попытка спрятаться броском Ловкости (Скрытность) против пассивной Мудрости (Восприятие) врагов.</li>
+                        <li><strong>Подготовка (Ready):</strong> Откладывание действия до наступления выбранного триггера (использует реакцию); подготовка заклинания расходует ячейку и требует поддержания Концентрации.</li>
+                        <li><strong>Поиск (Search):</strong> Поиск скрытых объектов или существ с помощью броска Мудрости (Восприятие) или Интеллекта (Анализ).</li>
+                        <li><strong>Использование объекта (Use an Object):</strong> Взаимодействие со сложным предметом; достать одно оружие при перемещении можно бесплатно, а второе — требует данного действия.</li>
+                    </ul>
+                </div>
+            </details>
+
+            <!-- Accordion 4: Conditions -->
+            <details>
+                <summary>Состояния (Conditions)</summary>
+                <div class="details-content">
+                    <ul class="list-disc pl-4 space-y-3">
+                        <li><strong>Ослепленный (Blinded):</strong> Не видит, автоматически проваливает проверки на зрение, атакует с помехой, получает атаки по себе с преимуществом.</li>
+                        <li><strong>Очарованный (Charmed):</strong> Не может атаковать очаровавшего, а очаровавший получает преимущество на социальные проверки с ним.</li>
+                        <li><strong>Оглохший (Deafened):</strong> Не слышит и автоматически проваливает все проверки на слух.</li>
+                        <li><strong>Испуганный (Frightened):</strong> Помеха на проверки характеристик и атаки, пока источник страха в зоне видимости; не может приближаться к нему.</li>
+                        <li><strong>Схваченный (Grappled):</strong> Скорость равна 0; оканчивается при недееспособности захватившего или при отбрасывании цели эффектом.</li>
+                        <li><strong>Недееспособный (Incapacitated):</strong> Не может совершать действия и реакции.</li>
+                        <li><strong>Невидимый (Invisible):</strong> Нельзя увидеть без магии; считается сильно заслоненным, атакует с преимуществом, атаки по нему — с помехой.</li>
+                        <li><strong>Парализованный (Paralyzed):</strong> Недееспособен, не двигается и не говорит, автоматически проваливает спасброски Силы и Ловкости; атаки по нему — с преимуществом, а попадания с 5 футов становятся критическими.</li>
+                        <li><strong>Окаменевший (Petrified):</strong> Превращен в камень, недееспособен, имеет сопротивление ко всем видам урона, проваливает спасброски Силы и Ловкости, перестает стареть и получает иммунитет к ядам и болезням.</li>
+                        <li><strong>Отравленный (Poisoned):</strong> Помеха на броски атаки и проверки характеристик.</li>
+                        <li><strong>Сбитый с ног (Prone):</strong> Передвигается только ползком и атакует с помехой; атаки по нему с 5 футов совершаются с преимуществом, а издалека — с помехой.</li>
+                        <li><strong>Опутанный (Restrained):</strong> Скорость равна 0, атакует с помехой, получает атаки по себе с преимуществом, имеет помеху на спасброски Ловкости.</li>
+                        <li><strong>Ошеломленный (Stunned):</strong> Недееспособен, не двигается, говорит запинаясь, автоматически проваливает спасброски Силы и Ловкости, атаки по нему — с преимуществом.</li>
+                        <li><strong>Бессознательный (Unconscious):</strong> Недееспособен, роняет предметы, падает ничком, автоматически проваливает спасброски Силы и Ловкости, получает атаки по себе с преимуществом (с 5 футов — критические); урон дает 1 провал спасброска от смерти (критический урон — 2 провала).</li>
+                    </ul>
+                </div>
+            </details>
+
+            <!-- Accordion 5: Mechanics -->
+            <details>
+                <summary>Базовые механики и Укрытия</summary>
+                <div class="details-content">
+                    <h3 class="font-bold text-[var(--text-main)] mb-2">Базовые механики</h3>
+                    <ul class="list-disc pl-4 space-y-2 mb-4">
+                        <li><strong>Преимущество и Помеха:</strong> При Преимуществе выбирается наибольший результат из 2d20, при Помехе — наименьший; эффекты взаимно отменяют друг друга.</li>
+                        <li><strong>Проверки характеристик:</strong> Бросок 1d20 + Модификатор Характеристики + Бонус Мастерства (при владении навыком) против Сложности (DC).</li>
+                        <li><strong>Спасброски:</strong> Бросок 1d20 + Модификатор Характеристики + Бонус Мастерства (при владении спасброском класса).</li>
+                        <li><strong>Спасброски от смерти:</strong> Бросаются при 0 хитов (1d20): результат &ge; 10 — успех, &lt; 10 — провал; 3 успеха стабилизируют, 3 провала — смерть; «20» восстанавливает 1 хит, «1» дает 2 провала.</li>
+                        <li><strong>Критический удар:</strong> Выпадение натуральной «20» при атаке гарантирует попадание и удваивает все кости урона (не распространяется на проверки характеристик или спасброски).</li>
+                    </ul>
+                    <h3 class="font-bold text-[var(--text-main)] mb-2">Укрытия (Cover)</h3>
+                    <ul class="list-disc pl-4 space-y-2">
+                        <li><strong>Половинное укрытие (1/2):</strong> Дает бонус +2 к КД и спасброскам Ловкости (низкая стена, мебель, другое существо).</li>
+                        <li><strong>Укрытие на 3/4:</strong> Дает бонус +5 к КД и спасброскам Ловкости (бойница, толстое дерево).</li>
+                        <li><strong>Полное укрытие:</strong> Существо полностью скрыто и не может быть выбрано прямой целью для атак или заклинаний.</li>
+                    </ul>
+                </div>
+            </details>
+
+        </div>
+    </main>
+
+    <!-- History Drawer Overlay -->
+    <div id="history-overlay" class="history-overlay" onclick="toggleHistory()"></div>
+    
+    <!-- History Drawer Panel -->
+    <div id="history-drawer" class="history-drawer">
+        <div class="p-4 border-b border-[var(--border-color)] flex justify-between items-center bg-[var(--bg-surface)] rounded-t-3xl">
+            <h2 class="font-bold text-lg">История бросков</h2>
+            <button onclick="toggleHistory()" class="text-[var(--text-muted)] p-1 hover:text-[var(--text-main)]">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-3" style="-webkit-overflow-scrolling: touch; touch-action: pan-y;">
+            <div class="text-center text-[var(--text-muted)] text-sm italic mt-4">Пока нет бросков</div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- 1. THEME & TABS ---
+        function toggleTheme() {
+            document.body.classList.toggle('theme-light');
+        }
+
+        function switchTab(tabId) {
+            // Update buttons
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update contents
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+        }
+
+        function toggleHistory() {
+            document.getElementById('history-drawer').classList.toggle('open');
+            document.getElementById('history-overlay').classList.toggle('open');
+        }
+
+        // --- 2. DICE STATE ---
+        const DICES = [4, 6, 8, 10, 12, 20, 100];
+        let currentPool = {4:0, 6:0, 8:0, 10:0, 12:0, 20:0, 100:0};
+        let lastRolledPool = null;
+        let lastRolledMod = 0;
+        
+        // Cumulative sum for instant rolls until cleared
+        let instantSum = 0;
+        let instantDetails = [];
+
+        let historyLog = [];
+
+        // UI Elements
+        const elTotal = document.getElementById('display-total');
+        const elFormula = document.getElementById('display-formula');
+        const elPoolForm = document.getElementById('pool-formula-display');
+        const elModInput = document.getElementById('mod-input');
+        const elSumBox = document.getElementById('sum-box');
+
+        // --- 3. CORE LOGIC ---
+        function updatePool(sides, delta) {
+            let newValue = currentPool[sides] + delta;
+            if(newValue >= 0 && newValue <= 99) {
+                currentPool[sides] = newValue;
+                document.getElementById(`pool-count-${sides}`).innerText = currentPool[sides];
+                renderPoolFormula();
+            }
+        }
+
+        function renderPoolFormula() {
+            let parts = [];
+            DICES.forEach(d => {
+                if(currentPool[d] > 0) parts.push(`${currentPool[d]}d${d}`);
+            });
+            if(parts.length === 0) {
+                elPoolForm.innerHTML = '<span class="text-[var(--text-muted)] italic">Пусто</span>';
+            } else {
+                elPoolForm.innerText = parts.join(' + ');
+            }
+        }
+
+        function clearAll() {
+            // Clear pool
+            DICES.forEach(d => {
+                currentPool[d] = 0;
+                document.getElementById(`pool-count-${d}`).innerText = '0';
+            });
+            elModInput.value = 0;
+            renderPoolFormula();
+
+            // Clear instant sum
+            instantSum = 0;
+            instantDetails = [];
+            elTotal.innerText = '0';
+            elFormula.innerText = 'Киньте дайс или соберите пул';
+        }
+
+        function animateSum() {
+            elSumBox.classList.remove('highlight');
+            void elSumBox.offsetWidth; // trigger reflow
+            elSumBox.classList.add('highlight');
+            setTimeout(() => elSumBox.classList.remove('highlight'), 300);
+        }
+
+        function animateDieButton(sides) {
+            const btn = document.getElementById(`die-btn-${sides}`);
+            btn.classList.remove('animate-roll');
+            void btn.offsetWidth;
+            btn.classList.add('animate-roll');
+        }
+
+        // Action: Instant Roll
+        function instantRoll(sides) {
+            animateDieButton(sides);
+            
+            const result = Math.floor(Math.random() * sides) + 1;
+            instantSum += result;
+            
+            let resStr = result.toString();
+            if(sides === 20 && result === 20) resStr = `<span class="text-green-500 font-bold">20</span>`;
+            if(sides === 20 && result === 1) resStr = `<span class="text-red-500 font-bold">1</span>`;
+
+            instantDetails.push(`1d${sides} [${resStr}]`);
+
+            // Update UI
+            elTotal.innerText = instantSum;
+            elFormula.innerHTML = instantDetails.join(' + ');
+            animateSum();
+
+            // Add to history (Single roll)
+            addToHistory(`1d${sides}`, result.toString(), result);
+        }
+
+        // Action: Roll Built Pool
+        function rollPool(useLast = false) {
+            let targetPool = useLast ? lastRolledPool : currentPool;
+            let targetMod = useLast ? lastRolledMod : parseInt(elModInput.value) || 0;
+
+            if(!targetPool) return;
+
+            let totalSum = 0;
+            let formulaParts = [];
+            let detailParts = [];
+            let hasDice = false;
+
+            DICES.forEach(sides => {
+                const count = targetPool[sides];
+                if(count > 0) {
+                    hasDice = true;
+                    formulaParts.push(`${count}d${sides}`);
+                    
+                    let rolls = [];
+                    for(let i=0; i<count; i++) {
+                        const r = Math.floor(Math.random() * sides) + 1;
+                        totalSum += r;
+                        
+                        let rStr = r.toString();
+                        if(sides === 20 && r === 20) rStr = `<span class="text-green-500 font-bold">20</span>`;
+                        if(sides === 20 && r === 1) rStr = `<span class="text-red-500 font-bold">1</span>`;
+                        rolls.push(rStr);
+                    }
+                    detailParts.push(`${count}d${sides} [${rolls.join(', ')}]`);
+                }
+            });
+
+            if(!hasDice && targetMod === 0) return; // Nothing to roll
+
+            totalSum += targetMod;
+
+            let finalFormula = formulaParts.join(' + ');
+            if (targetMod > 0) finalFormula += ` + ${targetMod}`;
+            else if (targetMod < 0) finalFormula += ` - ${Math.abs(targetMod)}`;
+
+            let detailsHtml = detailParts.join(' + ');
+            if (targetMod > 0) detailsHtml += ` <span class="text-[var(--text-main)]">+ ${targetMod}</span>`;
+            else if (targetMod < 0) detailsHtml += ` <span class="text-[var(--text-main)]">- ${Math.abs(targetMod)}</span>`;
+
+            // Reset instant sum because a new pool was rolled
+            instantSum = 0;
+            instantDetails = [];
+
+            // Update UI
+            elTotal.innerText = totalSum;
+            elFormula.innerHTML = detailsHtml || targetMod;
+            animateSum();
+
+            // Save state for Re-roll
+            if (!useLast) {
+                lastRolledPool = {...currentPool};
+                lastRolledMod = targetMod;
+            }
+
+            // Add to history
+            addToHistory(finalFormula, detailsHtml || targetMod.toString(), totalSum);
+        }
+
+        function repeatLastRoll() {
+            if(lastRolledPool) rollPool(true);
+        }
+
+        // --- 4. HISTORY ---
+        function addToHistory(formula, details, total) {
+            const time = new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+            
+            const item = { time, formula, details, total };
+            historyLog.unshift(item);
+            if(historyLog.length > 20) historyLog.pop();
+            
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('history-list');
+            list.innerHTML = '';
+            
+            historyLog.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'bg-[var(--bg-surface-hover)] p-3 rounded-xl border border-[var(--border-color)] flex flex-col gap-1';
+                el.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="font-bold text-xs text-[var(--accent)]">${item.formula}</div>
+                        <div class="text-[10px] text-[var(--text-muted)]">${item.time}</div>
+                    </div>
+                    <div class="text-xs font-mono text-[var(--text-muted)] break-words leading-relaxed">${item.details}</div>
+                    <div class="text-right text-lg font-black text-[var(--text-main)] mt-1">Итог: ${item.total}</div>
+                `;
+                list.appendChild(el);
+            });
+        }
+    </script>
+</body>
+</html>
