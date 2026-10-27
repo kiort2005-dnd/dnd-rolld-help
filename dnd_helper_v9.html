@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>D&D Helper</title>
+    <style>
+        :root {
+            /* Базовые переменные (темная тема по умолчанию) */
+            --bg-main: #121820;
+            --bg-panel: #1a222d;
+            --bg-panel-light: #242f3d;
+            
+            --accent: #00d2ff;
+            --accent-rgb: 0, 210, 255;
+            --glow-mult: 1; /* Множитель интенсивности свечения */
+            
+            --text-main: #e0e0e0;
+            --text-muted: #8892b0;
+            --text-bright: #ffffff;
+            --border: #2e3c4f;
+            --crit-success: #4ade80;
+            --crit-fail: #f87171;
+            
+            /* Динамическое свечение */
+            --glow-strong: 0 0 calc(var(--glow-mult) * 25px) rgba(var(--accent-rgb), 0.35), inset 0 0 calc(var(--glow-mult) * 15px) rgba(var(--accent-rgb), 0.15);
+            --glow-medium: 0 0 calc(var(--glow-mult) * 12px) rgba(var(--accent-rgb), 0.25);
+            --glow-text: 0 0 calc(var(--glow-mult) * 8px) rgba(var(--accent-rgb), 0.7);
+        }
+
+        .light-theme {
+            --bg-main: #f0f2f5;
+            --bg-panel: #ffffff;
+            --bg-panel-light: #e4e6eb;
+            --text-main: #1a1a1a;
+            --text-muted: #666666;
+            --text-bright: #0066cc; /* Сумма яркая, не сливается с фоном */
+            --border: #cccccc;
+            
+            /* Свечение для светлой темы */
+            --glow-strong: 0 0 calc(var(--glow-mult) * 15px) rgba(var(--accent-rgb), 0.25), inset 0 0 calc(var(--glow-mult) * 10px) rgba(var(--accent-rgb), 0.15);
+            --glow-medium: 0 0 calc(var(--glow-mult) * 8px) rgba(var(--accent-rgb), 0.2);
+            --glow-text: 0 0 calc(var(--glow-mult) * 4px) rgba(var(--accent-rgb), 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            overflow: hidden;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Верхняя навигация */
+        header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px 20px;
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            color: var(--accent);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            text-shadow: var(--glow-text);
+        }
+
+        .tabs-nav {
+            display: flex;
+            background-color: var(--bg-panel);
+            position: relative;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 15px 5px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .tab-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            text-shadow: var(--glow-text);
+        }
+
+        /* Контейнеры контента */
+        .content-area {
+            position: absolute;
+            top: 115px; 
+            bottom: 0;
+            width: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            padding: 20px;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* --- КАСТОМНЫЙ ПЕРЕКЛЮЧАТЕЛЬ (TOGGLE) --- */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 46px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--bg-panel-light);
+            transition: .3s;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px; width: 16px;
+            left: 3px; bottom: 3px;
+            background-color: var(--text-muted);
+            transition: .3s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: rgba(var(--accent-rgb), 0.15);
+            border-color: var(--accent);
+            box-shadow: var(--glow-medium);
+        }
+        input:checked + .slider:before {
+            transform: translateX(22px);
+            background-color: var(--accent);
+            box-shadow: var(--glow-text);
+        }
+
+        /* --- РОЛЛЕР (Dice Circle) --- */
+        .roller-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding-bottom: 100px;
+        }
+
+        .single-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-panel);
+            padding: 12px 15px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            width: 100%;
+            justify-content: space-between;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-main);
+            cursor: pointer;
+        }
+
+        .mod-input-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: bold;
+        }
+
+        .mod-input-wrap input {
+            width: 55px;
+            background: var(--bg-panel-light);
+            color: var(--accent);
+            border: 1px solid var(--border);
+            padding: 6px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: 0.2s;
+            text-shadow: var(--glow-text);
+        }
+        .mod-input-wrap input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: var(--glow-medium);
+        }
+
+        .dice-circle-wrapper {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 15px auto;
+        }
+
+        .center-sum {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: var(--bg-panel);
+            border: 2px solid var(--accent);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: var(--glow-strong);
+            transition: 0.2s ease-in-out;
+        }
+
+        .sum-value {
+            font-size: 2.8rem;
+            font-weight: bold;
+            color: var(--text-bright);
+            text-shadow: var(--glow-text);
+            line-height: 1;
+            margin-bottom: 5px;
+        }
+
+        .sum-label {
+            font-size: 0.8rem;
+            color: var(--accent);
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .dice-btn {
+            position: absolute;
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            background: var(--bg-panel-light);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            font-weight: bold;
+            font-size: 1.1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+            box-shadow: var(--glow-medium);
+            text-shadow: var(--glow-text);
+            transition: all 0.15s ease;
+        }
+
+        .dice-btn:active {
+            transform: translate(-50%, -50%) scale(0.9);
+            background: var(--accent);
+            color: var(--text-bright);
+            box-shadow: 0 0 calc(var(--glow-mult) * 25px) var(--accent);
+            text-shadow: none;
+        }
+
+        /* Сборка пула */
+        .pool-builder {
+            width: 100%;
+            background: var(--bg-panel);
+            border-radius: 15px;
+            padding: 20px 15px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 0.95rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.2s;
+        }
+
+        .btn-primary { 
+            background: var(--accent); 
+            color: #121820; 
+            box-shadow: var(--glow-medium);
+        }
+        .btn-primary:active {
+            transform: scale(0.97);
+            box-shadow: 0 0 calc(var(--glow-mult) * 25px) var(--accent);
+        }
+        .btn-secondary { 
+            background: var(--bg-panel-light); 
+            color: var(--text-main); 
+            border: 1px solid var(--border); 
+        }
+        .btn-secondary:active {
+            transform: scale(0.97);
+        }
+
+        .pool-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .pool-btn-group {
+            display: flex;
+            align-items: center;
+            background: var(--bg-main);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .pool-btn-group button {
+            background: none;
+            border: none;
+            color: var(--text-main);
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.1rem;
+        }
+        .pool-btn-group button:active { background: var(--bg-panel-light); }
+        .pool-btn-group .dice-label {
+            padding: 0 10px;
+            font-weight: bold;
+            color: var(--accent);
+            text-shadow: var(--glow-text);
+            min-width: 55px;
+            text-align: center;
+        }
+
+        .history-box {
+            width: 100%;
+            background: var(--bg-panel);
+            border-radius: 15px;
+            padding: 15px;
+            border: 1px solid var(--border);
+            max-height: 220px;
+            overflow-y: auto;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .history-item {
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-item:last-child { border-bottom: none; }
+        .history-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* --- СПРАВОЧНИК --- */
+        .search-bar {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-panel);
+            color: var(--text-main);
+            font-size: 1rem;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+            transition: 0.2s;
+        }
+        .search-bar:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: var(--glow-medium);
+        }
+
+        .accordion {
+            background-color: var(--bg-panel);
+            color: var(--text-main);
+            cursor: pointer;
+            padding: 16px;
+            width: 100%;
+            text-align: left;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            outline: none;
+            font-size: 1.05rem;
+            font-weight: bold;
+            transition: 0.2s;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        /* Исправление символов разворачивания/сворачивания */
+        .accordion:after {
+            content: '+';
+            color: var(--accent);
+            font-size: 1.6rem;
+            text-shadow: var(--glow-text);
+        }
+        .accordion.active:after {
+            content: '-';
+            font-size: 1.8rem;
+        }
+        .accordion.active {
+            border-color: var(--accent);
+            box-shadow: var(--glow-medium);
+        }
+
+        .panel {
+            padding: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s cubic-bezier(0, 1, 0.5, 1);
+            margin-bottom: 12px;
+            background-color: transparent;
+        }
+
+        .table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            transform: translateZ(0);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background-color: var(--bg-panel);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 550px;
+        }
+
+        th, td {
+            padding: 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
+        }
+
+        th {
+            background-color: var(--bg-panel-light);
+            color: var(--accent);
+            position: sticky;
+            top: 0;
+            text-shadow: var(--glow-text);
+            font-weight: bold;
+        }
+
+        .ref-list {
+            list-style: none;
+            padding: 15px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+
+        .ref-list li {
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .ref-list li:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .ref-list strong {
+            color: var(--accent);
+            text-shadow: var(--glow-text);
+        }
+
+        /* --- НАСТРОЙКИ --- */
+        .settings-block {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            padding: 18px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .settings-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.05rem;
+            font-weight: bold;
+            color: var(--text-main);
+            width: 100%;
+        }
+
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            width: 46px;
+            height: 46px;
+            border-radius: 8px;
+            cursor: pointer;
+            background: none;
+            padding: 0;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { 
+            border: 2px solid var(--border); 
+            border-radius: 8px; 
+            box-shadow: var(--glow-medium);
+        }
+
+        /* Кастомный ползунок */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: var(--bg-panel-light);
+            border-radius: 5px;
+            outline: none;
+            margin-top: 15px;
+            border: 1px solid var(--border);
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: var(--glow-text);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>D&D Helper</h1>
+    </header>
+
+    <div class="tabs-nav">
+        <button class="tab-btn active" onclick="switchTab('roller')">РОЛЛЕР</button>
+        <button class="tab-btn" onclick="switchTab('reference')">СПРАВОЧНИК</button>
+        <button class="tab-btn" onclick="switchTab('settings')">НАСТРОЙКИ</button>
+    </div>
+
+    <!-- Вкладка РОЛЛЕР -->
+    <div id="roller" class="content-area tab-content active">
+        <div class="roller-container">
+            
+            <div class="single-controls">
+                <label class="toggle-label">
+                    <div class="switch">
+                        <input type="checkbox" id="sumToggle">
+                        <span class="slider"></span>
+                    </div>
+                    Суммировать броски
+                </label>
+                <div class="mod-input-wrap">
+                    <label>Мод:</label>
+                    <input type="number" id="singleMod" value="0">
+                </div>
+            </div>
+
+            <div class="dice-circle-wrapper" id="diceCircle">
+                <div class="center-sum" id="centerSumBlock">
+                    <div class="sum-value" id="centerResult">0</div>
+                    <div class="sum-label" id="centerDetail">-</div>
+                </div>
+                <!-- Кнопки расставляются через JS -->
+            </div>
+
+            <div class="pool-builder">
+                <div class="action-btns">
+                    <button class="btn btn-secondary" onclick="clearPool()">Сброс</button>
+                    <button class="btn btn-primary" onclick="rollPool()">Бросить пул</button>
+                </div>
+                
+                <div class="mod-input-wrap" style="justify-content: center; margin-bottom: 15px;">
+                    <label>Пул Мод:</label>
+                    <input type="number" id="poolMod" value="0">
+                </div>
+
+                <div class="pool-controls">
+                    <script>
+                        const diceTypes = [4, 6, 8, 10, 12, 20, 100];
+                        diceTypes.forEach(d => {
+                            document.write(`
+                                <div class="pool-btn-group">
+                                    <button onclick="updatePool(${d}, -1)">-</button>
+                                    <span class="dice-label" id="pool-d${d}">0d${d}</span>
+                                    <button onclick="updatePool(${d}, 1)">+</button>
+                                </div>
+                            `);
+                        });
+                    </script>
+                </div>
+            </div>
+
+            <div class="history-box" id="history">
+                <div style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">История:</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Вкладка СПРАВОЧНИК -->
+    <div id="reference" class="content-area tab-content">
+        <input type="text" id="searchRef" class="search-bar" placeholder="Поиск (оружие, доспехи, правила)...">
+
+        <button class="accordion" id="acc-weapons">Оружие (Weapons)</button>
+        <div class="panel">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Eng</th>
+                            <th>Урон</th>
+                            <th>Тип</th>
+                            <th>Свойства</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="cat-row"><td colspan="5" style="text-align:center; color: var(--accent); text-shadow: var(--glow-text); font-weight: bold;">Простое рукопашное</td></tr>
+                        <tr class="item-row"><td>Боевой посох</td><td>Quarterstaff</td><td>1d6</td><td>Дробящий</td><td>Универсальное (1d8)</td></tr>
+                        <tr class="item-row"><td>Булава</td><td>Mace</td><td>1d6</td><td>Дробящий</td><td>Нет</td></tr>
+                        <tr class="item-row"><td>Кинжал</td><td>Dagger</td><td>1d4</td><td>Колющий</td><td>Фехтовальное, Легкое, Метательное (20/60)</td></tr>
+                        <tr class="item-row"><td>Копье</td><td>Spear</td><td>1d6</td><td>Колющий</td><td>Метательное (20/60), Универсальное (1d8)</td></tr>
+                        <tr class="item-row"><td>Легкий молот</td><td>Light Hammer</td><td>1d4</td><td>Дробящий</td><td>Легкое, Метательное (20/60)</td></tr>
+                        <tr class="item-row"><td>Метательное копье</td><td>Javelin</td><td>1d6</td><td>Колющий</td><td>Метательное (30/120)</td></tr>
+                        <tr class="item-row"><td>Палица</td><td>Greatclub</td><td>1d8</td><td>Дробящий</td><td>Двуручное</td></tr>
+                        <tr class="item-row"><td>Ручной топор</td><td>Handaxe</td><td>1d6</td><td>Рубящий</td><td>Легкое, Метательное (20/60)</td></tr>
+                        <tr class="item-row"><td>Серп</td><td>Sickle</td><td>1d4</td><td>Рубящий</td><td>Легкое</td></tr>
+                        
+                        <tr class="cat-row"><td colspan="5" style="text-align:center; color: var(--accent); text-shadow: var(--glow-text); font-weight: bold;">Воинское рукопашное</td></tr>
+                        <tr class="item-row"><td>Алебарда</td><td>Halberd</td><td>1d10</td><td>Рубящий</td><td>Двуручное, Тяжелое, Досягаемость</td></tr>
+                        <tr class="item-row"><td>Боевой молот</td><td>Warhammer</td><td>1d8</td><td>Дробящий</td><td>Универсальное (1d10)</td></tr>
+                        <tr class="item-row"><td>Глефа</td><td>Glaive</td><td>1d10</td><td>Рубящий</td><td>Двуручное, Тяжелое, Досягаемость</td></tr>
+                        <tr class="item-row"><td>Двуручный меч</td><td>Greatsword</td><td>2d6</td><td>Рубящий</td><td>Двуручное, Тяжелое</td></tr>
+                        <tr class="item-row"><td>Двуручный топор</td><td>Greataxe</td><td>1d12</td><td>Рубящий</td><td>Двуручное, Тяжелое</td></tr>
+                        <tr class="item-row"><td>Длинный меч</td><td>Longsword</td><td>1d8</td><td>Рубящий</td><td>Универсальное (1d10)</td></tr>
+                        <tr class="item-row"><td>Короткий меч</td><td>Shortsword</td><td>1d6</td><td>Колющий</td><td>Фехтовальное, Легкое</td></tr>
+                        <tr class="item-row"><td>Рапира</td><td>Rapier</td><td>1d8</td><td>Колющий</td><td>Фехтовальное</td></tr>
+                        
+                        <tr class="cat-row"><td colspan="5" style="text-align:center; color: var(--accent); text-shadow: var(--glow-text); font-weight: bold;">Дальнобойное</td></tr>
+                        <tr class="item-row"><td>Короткий лук</td><td>Shortbow</td><td>1d6</td><td>Колющий</td><td>Боеприпасы (80/320), Двуручное</td></tr>
+                        <tr class="item-row"><td>Легкий арбалет</td><td>Light Crossbow</td><td>1d8</td><td>Колющий</td><td>Боеприпасы (80/320), Двуручное, Перезарядка</td></tr>
+                        <tr class="item-row"><td>Длинный лук</td><td>Longbow</td><td>1d8</td><td>Колющий</td><td>Боеприпасы (150/600), Двуручное, Тяжелое</td></tr>
+                        <tr class="item-row"><td>Тяжелый арбалет</td><td>Heavy Crossbow</td><td>1d10</td><td>Колющий</td><td>Боеприпасы (100/400), Двуручное, Тяжелое, Перезарядка</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <button class="accordion" id="acc-armor">Доспехи и Щиты (Armor)</button>
+        <div class="panel">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Категория</th>
+                            <th>Название</th>
+                            <th>КД / AC</th>
+                            <th>Треб. Сила</th>
+                            <th>Скрытность</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="item-row"><td>Легкие</td><td>Стеганый</td><td>11 + Мод. Ловк.</td><td>Нет</td><td>Помеха</td></tr>
+                        <tr class="item-row"><td>Легкие</td><td>Кожаный</td><td>11 + Мод. Ловк.</td><td>Нет</td><td>Нет</td></tr>
+                        <tr class="item-row"><td>Легкие</td><td>Проклепанный</td><td>12 + Мод. Ловк.</td><td>Нет</td><td>Нет</td></tr>
+                        <tr class="item-row"><td>Средние</td><td>Шкурный</td><td>12 + Ловк. (макс 2)</td><td>Нет</td><td>Нет</td></tr>
+                        <tr class="item-row"><td>Средние</td><td>Кольчужная рубаха</td><td>13 + Ловк. (макс 2)</td><td>Нет</td><td>Нет</td></tr>
+                        <tr class="item-row"><td>Средние</td><td>Чешуйчатый</td><td>14 + Ловк. (макс 2)</td><td>Нет</td><td>Помеха</td></tr>
+                        <tr class="item-row"><td>Средние</td><td>Кираса</td><td>14 + Ловк. (макс 2)</td><td>Нет</td><td>Нет</td></tr>
+                        <tr class="item-row"><td>Средние</td><td>Полулаты</td><td>15 + Ловк. (макс 2)</td><td>Нет</td><td>Помеха</td></tr>
+                        <tr class="item-row"><td>Тяжелые</td><td>Колечный</td><td>14</td><td>Нет</td><td>Помеха</td></tr>
+                        <tr class="item-row"><td>Тяжелые</td><td>Кольчужный</td><td>16</td><td>Сила 13</td><td>Помеха</td></tr>
+                        <tr class="item-row"><td>Тяжелые</td><td>Наборный</td><td>17</td><td>Сила 15</td><td>Помеха</td></tr>
+                        <tr class="item-row"><td>Тяжелые</td><td>Латы</td><td>18</td><td>Сила 15</td><td>Помеха</td></tr>
+                        <tr class="item-row"><td>Щит</td><td>Щит</td><td>+2</td><td>Нет</td><td>Нет</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <button class="accordion" id="acc-combat">Действия в бою (Combat Actions)</button>
+        <div class="panel">
+            <ul class="ref-list">
+                <li class="list-item"><strong>Атака:</strong> Вы совершаете одну рукопашную или дальнобойную атаку. Некоторые умения, такие как «Дополнительная атака» воина, позволяют совершать более одной атаки этим действием.</li>
+                <li class="list-item"><strong>Захват:</strong> Вы можете попытаться схватить существо, чтобы удержать его на месте. Это заменяет одну из ваших атак. Вы совершаете проверку Силы (Атлетика), а цель — Силы (Атлетика) или Ловкости (Акробатика).</li>
+                <li class="list-item"><strong>Толчок:</strong> Вы можете попытаться сбить существо с ног или оттолкнуть его. Заменяет одну из ваших атак. Вы совершаете проверку Силы (Атлетика) против Силы (Атлетика) или Ловкости (Акробатика) цели.</li>
+                <li class="list-item"><strong>Использование заклинания:</strong> Время наложения большинства заклинаний — 1 действие, поэтому использование заклинаний — самое частое действие заклинателей в бою.</li>
+                <li class="list-item"><strong>Рывок (Dash):</strong> Вы получаете дополнительное перемещение на текущий ход, равное вашей скорости. Если ваша скорость 30 футов, вы можете дополнительно переместиться еще на 30 футов.</li>
+                <li class="list-item"><strong>Отход (Disengage):</strong> Если вы совершаете действие Отход, ваше перемещение до конца текущего хода не провоцирует атаки по возможности.</li>
+                <li class="list-item"><strong>Уклонение (Dodge):</strong> До начала вашего следующего хода все броски атаки по вам совершаются с помехой, если вы видите атакующего, а ваши спасброски Ловкости совершаются с преимуществом. Эффект теряется, если вы становитесь недееспособны.</li>
+                <li class="list-item"><strong>Помощь (Help):</strong> Вы помогаете другому существу совершить действие, давая ему преимущество на следующую проверку характеристики, либо помогаете союзнику атаковать цель, давая преимущество на его следующий бросок атаки по этой цели.</li>
+                <li class="list-item"><strong>Засада (Hide):</strong> Вы совершаете проверку Ловкости (Скрытность), чтобы попытаться спрятаться, при условии, что вас не видят ясно. В случае успеха вы получаете определенные преимущества невидимого существа.</li>
+                <li class="list-item"><strong>Подготовка (Ready):</strong> Вы откладываете свое действие на потом, до наступления определенного обстоятельства (триггера). Вы используете свою реакцию для выполнения подготовленного действия после того, как этот триггер произошел.</li>
+            </ul>
+        </div>
+
+        <button class="accordion" id="acc-cond">Состояния (Conditions)</button>
+        <div class="panel">
+            <ul class="ref-list">
+                <li class="list-item"><strong>Ослепленный:</strong> Слепое существо ничего не видит и автоматически проваливает все проверки характеристик, требующие зрения. Броски атаки по существу совершаются с преимуществом, а его броски атаки — с помехой.</li>
+                <li class="list-item"><strong>Испуганный:</strong> Испуганное существо совершает с помехой проверки характеристик и броски атаки, пока источник его страха находится в пределах его линии видимости. Существо не может добровольно приблизиться к источнику своего страха.</li>
+                <li class="list-item"><strong>Схваченный:</strong> Скорость схваченного существа становится равна 0, и оно не получает никаких бонусов к скорости. Состояние оканчивается, если схвативший становится недееспособным. Состояние также оканчивается, если какой-либо эффект выводит схваченного из зоны досягаемости схватившего.</li>
+                <li class="list-item"><strong>Невидимый:</strong> Невидимое существо невозможно увидеть без помощи магии или особых чувств. Для совершения засады оно считается находящимся в сильно заслоненной местности. Местонахождение существа можно определить по шуму, который оно издает, или по оставленным им следам. Броски атаки по невидимому существу совершаются с помехой, а его броски атаки — с преимуществом.</li>
+                <li class="list-item"><strong>Парализованный:</strong> Парализованное существо недееспособно и не может ни перемещаться, ни говорить. Существо автоматически проваливает спасброски Силы и Ловкости. Броски атаки по существу совершаются с преимуществом. Любая атака, попавшая по существу, становится критическим попаданием, если нападающий находится в пределах 5 футов от него.</li>
+                <li class="list-item"><strong>Отравленный:</strong> Отравленное существо совершает с помехой броски атаки и проверки характеристик.</li>
+                <li class="list-item"><strong>Сбитый с ног (Prone):</strong> Единственный вариант перемещения для сбитого с ног существа — ползание, пока оно не встанет, прервав тем самым это состояние. Существо совершает броски атаки с помехой. Броски атаки по существу совершаются с преимуществом, если нападающий находится в пределах 5 футов от него. В противном случае броски атаки совершаются с помехой.</li>
+                <li class="list-item"><strong>Бессознательный:</strong> Бессознательное существо недееспособно, не может перемещаться и говорить, и не осознает, что происходит вокруг. Существо роняет все, что держит, и падает ничком. Существо автоматически проваливает спасброски Силы и Ловкости. Броски атаки по существу совершаются с преимуществом. Любая атака, попавшая по существу, становится критическим попаданием, если нападающий находится в пределах 5 футов от него.</li>
+            </ul>
+        </div>
+        
+        <button class="accordion" id="acc-formulas">Базовые формулы (Formulas)</button>
+        <div class="panel">
+            <ul class="ref-list">
+                <li class="list-item" style="color: var(--accent); font-size: 1.1rem; border-bottom: none; padding-bottom: 0;"><strong>⚔️ Атаки и Урон</strong></li>
+                <li class="list-item"><strong>Бросок атаки (Attack Roll):</strong> 1d20 + Модификатор Характеристики + Бонус Мастерства (если владеете оружием).<br>
+                Ближний бой: Сила (или Ловкость для оружия со свойством «Фехтовальное»).<br>
+                Дальний бой: Ловкость (или Сила для метательного оружия).<br>
+                Заклинания: Базовая характеристика заклинателя.</li>
+                <li class="list-item"><strong>Бросок урона (Damage Roll):</strong> Кости урона оружия + Модификатор Характеристики (тот же, что использовался для атаки). Примечание: Бонус Мастерства к урону не прибавляется.</li>
+                <li class="list-item"><strong>Бросок атаки заклинанием (Spell Attack):</strong> 1d20 + Модификатор Характеристики заклинателя + Бонус Мастерства.</li>
+                
+                <li class="list-item" style="color: var(--accent); font-size: 1.1rem; border-bottom: none; padding-bottom: 0; margin-top: 15px;"><strong>🛡️ Класс Доспеха (Armor Class / AC)</strong></li>
+                <li class="list-item"><strong>Без доспехов (Unarmored):</strong> 10 + Модификатор Ловкости.</li>
+                <li class="list-item"><strong>Легкий доспех (Light Armor):</strong> Базовый КД доспеха + Модификатор Ловкости.</li>
+                <li class="list-item"><strong>Средний доспех (Medium Armor):</strong> Базовый КД доспеха + Модификатор Ловкости (максимум +2).</li>
+                <li class="list-item"><strong>Тяжелый доспех (Heavy Armor):</strong> Базовый КД доспеха (Ловкость не влияет).</li>
+                <li class="list-item"><strong>Природный доспех (Natural Armor):</strong> Базовый КД (из статблока существа) + Модификатор Ловкости (как правило).</li>
+                <li class="list-item"><strong>Защита без доспехов (Варвар):</strong> 10 + Модификатор Ловкости + Модификатор Телосложения.</li>
+                <li class="list-item"><strong>Защита без доспехов (Монах):</strong> 10 + Модификатор Ловкости + Модификатор Мудрости.</li>
+                <li class="list-item"><strong>Щит (Shield):</strong> +2 к итоговому Классу Доспеха (экипируется только один).</li>
+                <li class="list-item"><strong>Доспехи Мага (Mage Armor):</strong> 13 + Модификатор Ловкости.</li>
+                
+                <li class="list-item" style="color: var(--accent); font-size: 1.1rem; border-bottom: none; padding-bottom: 0; margin-top: 15px;"><strong>🎲 Проверки и Магия</strong></li>
+                <li class="list-item"><strong>Проверка Характеристики / Навыка (Ability / Skill Check):</strong> 1d20 + Модификатор Характеристики + Бонус Мастерства (если есть владение навыком).</li>
+                <li class="list-item"><strong>Спасбросок (Saving Throw):</strong> 1d20 + Модификатор Характеристики + Бонус Мастерства (если есть владение спасброском).</li>
+                <li class="list-item"><strong>Сложность спасброска от ваших заклинаний (Spell Save DC):</strong> 8 + Модификатор Характеристики заклинателя + Бонус Мастерства.</li>
+                <li class="list-item"><strong>Пассивная проверка (Passive Check):</strong> 10 + Модификатор Характеристики + Бонус Мастерства (если есть владение). Преимущество дает +5 к результату, а Помеха дает -5 (например, Пассивное Восприятие).</li>
+                
+                <li class="list-item" style="color: var(--accent); font-size: 1.1rem; border-bottom: none; padding-bottom: 0; margin-top: 15px;"><strong>❤️ Здоровье и Инициатива</strong></li>
+                <li class="list-item"><strong>Инициатива (Initiative):</strong> 1d20 + Модификатор Ловкости.</li>
+                <li class="list-item"><strong>Хиты на 1-м уровне (Max HP at 1st level):</strong> Максимальное значение Кости Хитов вашего класса + Модификатор Телосложения.</li>
+                <li class="list-item"><strong>Хиты при повышении уровня (HP on level up):</strong> Бросок Кости Хитов (или ее среднее фиксированное значение) + Модификатор Телосложения.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Вкладка НАСТРОЙКИ -->
+    <div id="settings" class="content-area tab-content">
+        <h2 style="color: var(--accent); margin-bottom: 20px; text-shadow: var(--glow-text); font-size: 1.2rem; text-align: center; text-transform: uppercase;">Персонализация</h2>
+        
+        <div class="settings-block">
+            <label class="settings-label">
+                <span>Светлая тема</span>
+                <div class="switch">
+                    <input type="checkbox" id="themeToggleSwitch" onchange="toggleTheme()">
+                    <span class="slider"></span>
+                </div>
+            </label>
+        </div>
+
+        <div class="settings-block">
+            <label class="settings-label">
+                <span>Акцентный цвет</span>
+                <input type="color" id="accentColorPicker" value="#00d2ff" oninput="updateAccentColor(this.value)">
+            </label>
+        </div>
+
+        <div class="settings-block">
+            <label class="settings-label" style="flex-direction: column; align-items: flex-start;">
+                <span>Интенсивность свечения</span>
+                <input type="range" id="glowIntensity" min="0" max="2" step="0.1" value="1" oninput="updateGlow(this.value)">
+            </label>
+        </div>
+    </div>
+
+    <script>
+        // --- ИНИЦИАЛИЗАЦИЯ НАСТРОЕК ---
+        function hexToRgb(hex) {
+            let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
+        }
+
+        function updateAccentColor(hex) {
+            const rgb = hexToRgb(hex);
+            if(rgb) {
+                document.documentElement.style.setProperty('--accent', hex);
+                document.documentElement.style.setProperty('--accent-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+                localStorage.setItem('dnd-accent', hex);
+            }
+        }
+
+        function updateGlow(val) {
+            document.documentElement.style.setProperty('--glow-mult', val);
+            localStorage.setItem('dnd-glow', val);
+        }
+
+        function toggleTheme() {
+            const isLight = document.getElementById('themeToggleSwitch').checked;
+            if (isLight) {
+                document.body.classList.add('light-theme');
+                localStorage.setItem('dnd-theme', 'light');
+            } else {
+                document.body.classList.remove('light-theme');
+                localStorage.setItem('dnd-theme', 'dark');
+            }
+        }
+
+        // Загрузка сохраненных настроек
+        window.onload = () => {
+            const savedAccent = localStorage.getItem('dnd-accent');
+            if (savedAccent) {
+                document.getElementById('accentColorPicker').value = savedAccent;
+                updateAccentColor(savedAccent);
+            }
+            const savedGlow = localStorage.getItem('dnd-glow');
+            if (savedGlow) {
+                document.getElementById('glowIntensity').value = savedGlow;
+                updateGlow(savedGlow);
+            }
+            const savedTheme = localStorage.getItem('dnd-theme');
+            if (savedTheme === 'light') {
+                document.getElementById('themeToggleSwitch').checked = true;
+                document.body.classList.add('light-theme');
+            }
+        };
+
+        // --- Вкладки ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // --- Аккордеоны ---
+        const acc = document.getElementsByClassName("accordion");
+        for (let i = 0; i < acc.length; i++) {
+            acc[i].addEventListener("click", function() {
+                this.classList.toggle("active");
+                const panel = this.nextElementSibling;
+                if (panel.style.maxHeight) {
+                    panel.style.maxHeight = null;
+                } else {
+                    panel.style.maxHeight = panel.scrollHeight + "px";
+                }
+            });
+        }
+
+        // --- УМНЫЙ ПОИСК (Сортировка: сначала по названию, потом по свойствам) ---
+        document.getElementById('searchRef').addEventListener('input', function(e) {
+            const query = e.target.value.toLowerCase().trim();
+            
+            Array.from(acc).forEach(a => {
+                const panel = a.nextElementSibling;
+                const tbody = panel.querySelector('tbody');
+                const list = panel.querySelector('.ref-list');
+                
+                let matchesTitle = [];
+                let matchesOther = [];
+
+                if (tbody) {
+                    const rows = Array.from(tbody.querySelectorAll('.item-row'));
+                    rows.forEach(row => {
+                        const titleCell = row.children[0]; 
+                        const titleEng = row.children[1];  
+                        const titleText = titleCell ? titleCell.textContent.toLowerCase() : '';
+                        const engText = titleEng ? titleEng.textContent.toLowerCase() : '';
+                        
+                        const fullRowText = row.textContent.toLowerCase();
+
+                        row.style.display = 'none';
+
+                        if (query === '') {
+                            row.style.display = '';
+                        } else {
+                            if (titleText.includes(query) || engText.includes(query)) {
+                                matchesTitle.push(row);
+                            } else if (fullRowText.includes(query)) {
+                                matchesOther.push(row);
+                            }
+                        }
+                    });
+
+                    if (query !== '') {
+                        matchesTitle.forEach(r => { r.style.display = ''; tbody.appendChild(r); });
+                        matchesOther.forEach(r => { r.style.display = ''; tbody.appendChild(r); });
+                    }
+
+                    panel.querySelectorAll('.cat-row').forEach(cr => {
+                        cr.style.display = query === '' ? '' : 'none'; 
+                    });
+
+                    let totalMatches = matchesTitle.length + matchesOther.length;
+                    if (query.length > 0) {
+                        if (totalMatches > 0) {
+                            a.style.display = 'flex';
+                            a.classList.add("active");
+                            panel.style.maxHeight = panel.scrollHeight + "px";
+                        } else {
+                            a.style.display = 'none';
+                            a.classList.remove("active");
+                            panel.style.maxHeight = null;
+                        }
+                    } else {
+                        a.style.display = 'flex';
+                        a.classList.remove("active");
+                        panel.style.maxHeight = null;
+                    }
+                }
+
+                if (list) {
+                    const items = Array.from(list.querySelectorAll('.list-item'));
+                    items.forEach(li => {
+                        const strong = li.querySelector('strong');
+                        const titleText = strong ? strong.textContent.toLowerCase() : '';
+                        const fullText = li.textContent.toLowerCase();
+
+                        li.style.display = 'none';
+
+                        if (query === '') {
+                            li.style.display = '';
+                        } else {
+                            if (titleText.includes(query)) {
+                                matchesTitle.push(li);
+                            } else if (fullText.includes(query)) {
+                                matchesOther.push(li);
+                            }
+                        }
+                    });
+
+                    if (query !== '') {
+                        matchesTitle.forEach(i => { i.style.display = ''; list.appendChild(i); });
+                        matchesOther.forEach(i => { i.style.display = ''; list.appendChild(i); });
+                    }
+
+                    let totalMatches = matchesTitle.length + matchesOther.length;
+                    if (query.length > 0) {
+                        if (totalMatches > 0) {
+                            a.style.display = 'flex';
+                            a.classList.add("active");
+                            panel.style.maxHeight = panel.scrollHeight + "px";
+                        } else {
+                            a.style.display = 'none';
+                            a.classList.remove("active");
+                            panel.style.maxHeight = null;
+                        }
+                    } else {
+                        a.style.display = 'flex';
+                        a.classList.remove("active");
+                        panel.style.maxHeight = null;
+                    }
+                }
+            });
+        });
+
+        // --- ЛОГИКА РОЛЛЕРА ---
+        let currentSingleSum = 0;
+        let pool = {4: 0, 6: 0, 8: 0, 10: 0, 12: 0, 20: 0, 100: 0};
+
+        const circle = document.getElementById('diceCircle');
+        const radius = 125;
+        const dices = [4, 6, 8, 10, 12, 20, 100];
+        const angleStep = (2 * Math.PI) / dices.length;
+
+        dices.forEach((d, i) => {
+            const angle = i * angleStep - Math.PI/2; 
+            const x = radius * Math.cos(angle);
+            const y = radius * Math.sin(angle);
+            
+            const btn = document.createElement('div');
+            btn.className = 'dice-btn';
+            btn.innerHTML = `d${d}`;
+            btn.style.left = `calc(50% + ${x}px)`;
+            btn.style.top = `calc(50% + ${y}px)`;
+            btn.onclick = () => rollSingle(d);
+            
+            circle.appendChild(btn);
+        });
+
+        function animateCenter() {
+            const center = document.getElementById('centerSumBlock');
+            center.style.transform = 'translate(-50%, -50%) scale(1.1)';
+            setTimeout(() => {
+                center.style.transform = 'translate(-50%, -50%) scale(1)';
+            }, 150);
+        }
+
+        function addToHistory(text) {
+            const hist = document.getElementById('history');
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            
+            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+            item.innerHTML = `<span>${text}</span> <span class="history-time">${time}</span>`;
+            
+            hist.insertBefore(item, hist.children[1]);
+            if(hist.children.length > 21) hist.lastChild.remove();
+        }
+
+        function rollSingle(max) {
+            animateCenter();
+            const roll = Math.floor(Math.random() * max) + 1;
+            const mod = parseInt(document.getElementById('singleMod').value) || 0;
+            const isSum = document.getElementById('sumToggle').checked;
+
+            let finalValue;
+            let displayMod = mod !== 0 ? (mod > 0 ? `+${mod}` : mod) : '';
+
+            if (isSum) {
+                currentSingleSum += roll;
+                finalValue = currentSingleSum + mod;
+                document.getElementById('centerResult').textContent = finalValue;
+                document.getElementById('centerDetail').textContent = `Сумма ${displayMod}`;
+                addToHistory(`+d${max}(${roll}) ${displayMod} = <strong>${finalValue}</strong>`);
+            } else {
+                currentSingleSum = roll;
+                finalValue = roll + mod;
+                document.getElementById('centerResult').textContent = finalValue;
+                document.getElementById('centerDetail').textContent = `d${max} ${displayMod}`;
+                addToHistory(`d${max} (${roll}) ${displayMod} = <strong>${finalValue}</strong>`);
+            }
+
+            const resultEl = document.getElementById('centerResult');
+            resultEl.style.color = '';
+            if (!isSum && max === 20) {
+                if (roll === 20) resultEl.style.color = 'var(--crit-success)';
+                if (roll === 1) resultEl.style.color = 'var(--crit-fail)';
+            }
+        }
+
+        function updatePool(d, change) {
+            pool[d] = Math.max(0, pool[d] + change);
+            document.getElementById(`pool-d${d}`).textContent = `${pool[d]}d${d}`;
+        }
+
+        function clearPool() {
+            Object.keys(pool).forEach(d => {
+                pool[d] = 0;
+                document.getElementById(`pool-d${d}`).textContent = `0d${d}`;
+            });
+            document.getElementById('poolMod').value = 0;
+            currentSingleSum = 0;
+            document.getElementById('centerResult').textContent = '0';
+            document.getElementById('centerDetail').textContent = '-';
+            document.getElementById('centerResult').style.color = '';
+            document.getElementById('singleMod').value = 0;
+        }
+
+        function rollPool() {
+            let total = 0;
+            let details = [];
+            const mod = parseInt(document.getElementById('poolMod').value) || 0;
+            let hasRolls = false;
+
+            Object.keys(pool).forEach(d => {
+                const count = pool[d];
+                if (count > 0) {
+                    hasRolls = true;
+                    let rolls = [];
+                    for(let i=0; i<count; i++) {
+                        rolls.push(Math.floor(Math.random() * d) + 1);
+                    }
+                    const sum = rolls.reduce((a,b)=>a+b,0);
+                    total += sum;
+                    details.push(`${count}d${d}[${rolls.join(',')}]`);
+                }
+            });
+
+            if (!hasRolls) return;
+            animateCenter();
+
+            const finalTotal = total + mod;
+            const modStr = mod !== 0 ? (mod > 0 ? `+${mod}` : mod) : '';
+            
+            currentSingleSum = total; 
+            
+            document.getElementById('centerResult').textContent = finalTotal;
+            document.getElementById('centerDetail').textContent = 'Пул';
+            document.getElementById('centerResult').style.color = '';
+            
+            addToHistory(`Пул: ${details.join(' + ')} ${modStr} = <strong>${finalTotal}</strong>`);
+        }
+    </script>
+</body>
+</html>
